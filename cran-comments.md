@@ -2,20 +2,27 @@
 
 This is a new submission of joinpoint 0.1.0.
 
+## Test environments
+
+* GitHub Actions: Ubuntu (R-devel, R-release, R-oldrel-1), macOS (R-release)
+  and Windows (R-release).
+* Local: macOS 26.5, aarch64, R 4.5.1, with the CRAN incoming checks.
+
 ## R CMD check results
 
-`R CMD check --as-cran` on the built tarball (macOS 26.5, aarch64, R 4.5.1)
-gives 0 errors, 0 warnings from the package and 1 note:
+0 errors | 0 warnings | 1 note
 
 * New submission.
 
-The local run also showed a compiler warning raised by R's own header
-`R_ext/Boolean.h` under Apple clang 21 (unknown warning group
-`-Wfixed-enum-extension`), unrelated to the package.
+`R CMD check --as-cran` gave 0 errors, 0 warnings and 0 notes on every
+GitHub Actions platform. The local run with the CRAN incoming checks gave
+the note above. Locally, Apple clang 21 also warned about R's own header
+`R_ext/Boolean.h` (unknown warning group `-Wfixed-enum-extension`), which
+is unrelated to the package.
 
-Before submission, add the results of win-builder (R-devel) and of the
-GitHub Actions check matrix (Linux, macOS and Windows; R-devel, R-release
-and R-oldrel).
+Possibly misspelled words in DESCRIPTION, if reported, are terms of the
+method (joinpoint, joinpoints, AAPC, autocorrelated) and the names of the
+cited authors (Lerman, Czajkowski, et al.).
 
 ## Notes for the reviewers
 
