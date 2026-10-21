@@ -17,7 +17,7 @@
   "runtimePlatform": "R >= 4.1",
   "operatingSystem": "OS Independent",
   "applicationCategory": "Trend analysis / epidemiology / biostatistics",
-  "developmentStatus": "active",
+  "developmentStatus": "https://www.repostatus.org/#active",
   "keywords": [
     "joinpoint regression",
     "segmented regression",

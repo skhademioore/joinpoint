@@ -4,16 +4,18 @@ This is a new submission of joinpoint 0.1.0.
 
 ## R CMD check results
 
-`R CMD check --as-cran` on the built tarball (macOS, aarch64, R 4.6.0) gives
-0 errors, 0 warnings and 1 note:
+`R CMD check --as-cran` on the built tarball (macOS 26.5, aarch64, R 4.5.1)
+gives 0 errors, 0 warnings from the package and 1 note:
 
 * New submission.
-* Possibly misspelled words in DESCRIPTION: these are the method's name
-  (joinpoint, joinpoints, AAPC, autocorrelated) and the authors of the cited
-  papers (Lerman, Czajkowski, et al.).
 
-The GitHub URLs in DESCRIPTION, `inst/CITATION` and the package help page
-resolve once the repository is public.
+The local run also showed a compiler warning raised by R's own header
+`R_ext/Boolean.h` under Apple clang 21 (unknown warning group
+`-Wfixed-enum-extension`), unrelated to the package.
+
+Before submission, add the results of win-builder (R-devel) and of the
+GitHub Actions check matrix (Linux, macOS and Windows; R-devel, R-release
+and R-oldrel).
 
 ## Notes for the reviewers
 
