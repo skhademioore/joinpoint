@@ -1,0 +1,32 @@
+# Version is taken from the installed DESCRIPTION so the citation never goes stale.
+ver <- meta$Version
+if (is.null(ver) || !nzchar(ver)) ver <- "0.1.0"
+
+bibentry(
+  bibtype  = "Manual",
+  title    = "joinpoint: Trend Analysis by Joinpoint Regression",
+  author   = person("Sahar", "Khademioore",
+                    comment = c(ORCID = "0000-0002-3025-0006")),
+  year     = "2026",
+  note     = paste0("R package version ", ver),
+  url      = "https://github.com/skhademioore/joinpoint",
+  header   = "To cite the joinpoint software, please use:"
+)
+
+bibentry(
+  bibtype  = "Article",
+  title    = "Permutation tests for joinpoint regression with applications to cancer rates",
+  author   = c(
+    person("Hyune-Ju", "Kim"),
+    person("Michael P.", "Fay"),
+    person("Eric J.", "Feuer"),
+    person("Douglas N.", "Midthune")
+  ),
+  journal  = "Statistics in Medicine",
+  year     = "2000",
+  volume   = "19",
+  number   = "3",
+  pages    = "335--351",
+  doi      = "10.1002/(SICI)1097-0258(20000215)19:3<335::AID-SIM336>3.0.CO;2-Z",
+  header   = "For joinpoint regression and its permutation test, please also cite:"
+)

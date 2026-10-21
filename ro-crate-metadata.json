@@ -1,0 +1,80 @@
+{
+  "@context": "https://w3id.org/ro/crate/1.1/context",
+  "@graph": [
+    {
+      "@type": "CreativeWork",
+      "@id": "ro-crate-metadata.json",
+      "conformsTo": { "@id": "https://w3id.org/ro/crate/1.1" },
+      "about": { "@id": "./" },
+      "description": "Machine-readable provenance and packaging metadata for the joinpoint R package, following the RO-Crate 1.1 specification."
+    },
+    {
+      "@type": "Dataset",
+      "@id": "./",
+      "name": "joinpoint: Trend Analysis by Joinpoint Regression",
+      "description": "Joinpoint (segmented line) regression for trend analysis of rates, proportions, counts and other series, with annual percent change estimates, confidence intervals, model selection, comparisons of trends and publication quality graphics.",
+      "datePublished": "2026-10-10",
+      "license": { "@id": "https://spdx.org/licenses/GPL-3.0-or-later.html" },
+      "author": [
+        { "@id": "https://orcid.org/0000-0002-3025-0006" }
+      ],
+      "mainEntity": { "@id": "#joinpoint" },
+      "hasPart": [
+        { "@id": "#joinpoint" },
+        { "@id": "https://github.com/skhademioore/joinpoint" }
+      ]
+    },
+    {
+      "@type": "SoftwareSourceCode",
+      "@id": "#joinpoint",
+      "name": "joinpoint",
+      "programmingLanguage": { "@id": "https://www.r-project.org" },
+      "codeRepository": "https://github.com/skhademioore/joinpoint",
+      "url": "https://github.com/skhademioore/joinpoint",
+      "version": "0.1.0",
+      "license": { "@id": "https://spdx.org/licenses/GPL-3.0-or-later.html" },
+      "author": [
+        { "@id": "https://orcid.org/0000-0002-3025-0006" }
+      ],
+      "citation": [
+        { "@id": "https://doi.org/10.1002/(SICI)1097-0258(20000215)19:3<335::AID-SIM336>3.0.CO;2-Z" },
+        { "@id": "https://doi.org/10.2307/2346413" },
+        { "@id": "https://doi.org/10.1002/sim.9407" }
+      ]
+    },
+    {
+      "@type": "Person",
+      "@id": "https://orcid.org/0000-0002-3025-0006",
+      "name": "Sahar Khademioore",
+      "email": "sahar.khademi975@gmail.com",
+      "roleName": [
+        "Conceptualization",
+        "Software",
+        "Methodology",
+        "Validation",
+        "Writing - original draft",
+        "Project administration"
+      ]
+    },
+    {
+      "@type": "ScholarlyArticle",
+      "@id": "https://doi.org/10.1002/(SICI)1097-0258(20000215)19:3<335::AID-SIM336>3.0.CO;2-Z",
+      "name": "Permutation tests for joinpoint regression with applications to cancer rates"
+    },
+    {
+      "@type": "ScholarlyArticle",
+      "@id": "https://doi.org/10.2307/2346413",
+      "name": "Fitting segmented regression models by grid search"
+    },
+    {
+      "@type": "ScholarlyArticle",
+      "@id": "https://doi.org/10.1002/sim.9407",
+      "name": "Twenty years since Joinpoint 1.0: two major enhancements, their justification, and impact"
+    },
+    {
+      "@type": "CreativeWork",
+      "@id": "https://w3id.org/ro/crate/1.1",
+      "name": "RO-Crate 1.1"
+    }
+  ]
+}

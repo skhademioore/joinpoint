@@ -1,0 +1,140 @@
+---
+title: "Getting started: a century of United States mortality"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Getting started: a century of United States mortality}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>", fig.width = 7.5,
+                      fig.height = 4.5, dpi = 150, out.width = "100%")
+```
+
+Between 1900 and 1998 the leading causes of death in the United States
+changed beyond recognition. Tuberculosis, the great killer of the early
+century, almost disappeared; heart disease rose and then fell; cancer kept
+climbing until the 1990s. A plot of the rates tells this story roughly.
+Joinpoint regression tells it precisely: it finds the years in which a
+trend changed direction or pace, and it summarizes each period by its
+annual percent change (APC).
+
+This vignette walks through a complete analysis with the `us_mortality`
+data: age adjusted death rates per 100,000 for six causes.
+
+```{r}
+library(joinpoint)
+library(ggplot2)
+head(us_mortality)
+```
+
+## One series
+
+Start with tuberculosis. `joinpoint()` takes the data, the time variable and
+the response. By default it fits a log-linear model (so segments are
+summarized by percent changes), searches for the best placement of 0 to
+`kmax` joinpoints on the observed years, selects the number of joinpoints
+with the weighted Bayesian information criterion (WBIC; Kim et al. 2023),
+and computes empirical quantile confidence intervals (Kim et al. 2017).
+
+```{r}
+tb <- subset(us_mortality, cause == "Tuberculosis")
+fit_tb <- joinpoint(tb, x = year, y = rate, kmax = 3)
+fit_tb
+```
+
+Three joinpoints split the century into four periods. The decline
+accelerated from 3.7% per year to almost 15% per year after 1947, when
+streptomycin came into use, and slowed again later. The asterisk marks APCs that
+differ significantly from zero. The average annual percent change (AAPC)
+condenses the whole century into one number.
+
+The result tables are ordinary data frames:
+
+```{r}
+apc(fit_tb)[, c("start", "end", "estimate", "lower", "upper", "p_value")]
+joinpoints(fit_tb)
+```
+
+`autoplot()` draws the data, the fitted model, the joinpoints and the APC of
+each segment. The shaded band is the 95% empirical quantile interval of the
+fitted curve.
+
+```{r, fig.height = 4}
+autoplot(fit_tb, joinpoint_ci = TRUE)
+```
+
+The gray rectangles are the confidence intervals of the joinpoint
+locations: the 1947 change is located within a few years.
+
+## All causes at once
+
+With `by`, each cause is fitted separately in one call.
+
+```{r}
+fit <- joinpoint(us_mortality, year, rate, by = "cause", kmax = 3,
+                 control = jp_control(aapc_last = 10))
+```
+
+Coloring segments by the direction of the trend turns the panel into a
+summary of the epidemiological transition. On a logarithmic axis equal
+percent changes look equally steep within a panel; the panels have their
+own scales, so compare slopes across causes through their APCs.
+
+```{r, fig.height = 6}
+autoplot(fit, color_by = "trend", log_y = TRUE) +
+  labs(x = NULL, y = "Age adjusted death rate per 100,000")
+```
+
+When the question is "how fast did each trend change, and when", the APC
+plot reads more directly than the data. Each segment is drawn over the years
+it covers, at the height of its APC, with its confidence interval as a band.
+
+```{r, fig.height = 6}
+plot_apc(fit)
+```
+
+AAPCs are best compared in a forest plot. The fit above requested the
+last ten years in addition to the full range through
+`jp_control(aapc_last = 10)`.
+
+```{r, fig.height = 3.8}
+plot_aapc(fit)
+```
+
+Over the century every cause but cancer and heart disease fell, but in the
+last decade of the series cancer mortality was falling as well.
+
+## Tables for a paper
+
+`jp_table()` returns the trends formatted for a manuscript, with the
+interval and p value of each estimate.
+
+```{r}
+knitr::kable(head(jp_table(fit, digits = 1), 8))
+```
+
+`model_estimates()` gives the regression coefficients (segment intercepts,
+slopes and slope changes with their tests), and `model_selection()` the
+statistics used to choose the number of joinpoints. `jp_export()` writes
+every table to text files, one per table.
+
+```{r, eval = FALSE}
+jp_export(fit, "results", prefix = "mortality")
+```
+
+## Where to go next
+
+- `vignette("published-analysis")` reproduces a published joinpoint analysis
+  and its figures.
+- `vignette("model-selection")` explains how the number of joinpoints is
+  chosen and why methods disagree.
+- `vignette("uncertainty")` covers error models, autocorrelation and the two
+  kinds of confidence intervals.
+- `vignette("comparing-groups")` tests whether two trends are parallel.
+- `vignette("coding-changes")` handles outliers and changes in disease
+  coding.
+- `vignette("clustering")` finds age groups that share a trend.
+- `vignette("extensions")` fits Poisson and logistic joinpoint models,
+  adjusts for seasonality and estimates joinpoints between observations.

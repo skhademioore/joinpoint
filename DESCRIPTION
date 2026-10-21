@@ -1,0 +1,49 @@
+Package: joinpoint
+Type: Package
+Title: Trend Analysis by Joinpoint Regression
+Version: 0.1.0
+Authors@R:
+    person("Sahar", "Khademioore", email = "sahar.khademi975@gmail.com",
+           role = c("aut", "cre", "cph"),
+           comment = c(ORCID = "0000-0002-3025-0006"))
+Description: Fits joinpoint (segmented line) regression models for trend
+    analysis of rates, proportions, counts and other series (Kim et al.
+    (2000) <doi:10.1002/(SICI)1097-0258(20000215)19:3%3C335::AID-SIM336%3E3.0.CO;2-Z>).
+    Joinpoints are located by an exhaustive grid search (Lerman (1980)
+    <doi:10.2307/2346413>) and the number of joinpoints is selected by the
+    weighted Bayesian information criterion, BIC, BIC3, modified BIC, data
+    dependent selection, the sequential permutation test or a Monte Carlo
+    likelihood ratio test. Provides annual percent change (APC) and average
+    annual percent change (AAPC) estimates with parametric and empirical
+    quantile confidence intervals (Kim et al. (2017) <doi:10.1002/sim.7344>),
+    heteroscedastic and autocorrelated error options, Poisson and logistic
+    joinpoint models (Czajkowski et al. (2008) <doi:10.1002/sim.3017>),
+    covariate adjustment, continuous joinpoints (Hudson (1966)
+    <doi:10.1080/01621459.1966.10482198>), jump and comparability ratio
+    models, pairwise comparisons of trends (Kim et al. (2004)
+    <doi:10.1111/j.0006-341X.2004.00256.x>), clustering of contiguous age
+    groups, age adjustment, and 'ggplot2' graphics.
+License: GPL (>= 3)
+Encoding: UTF-8
+Language: en-US
+Roxygen: list(markdown = TRUE)
+Depends:
+    R (>= 4.1)
+Imports:
+    ggplot2 (>= 4.0.0),
+    grDevices,
+    Rcpp,
+    stats,
+    utils
+LinkingTo:
+    Rcpp
+Suggests:
+    knitr,
+    rmarkdown,
+    testthat (>= 3.0.0)
+VignetteBuilder: knitr
+Config/testthat/edition: 3
+LazyData: true
+URL: https://github.com/skhademioore/joinpoint
+BugReports: https://github.com/skhademioore/joinpoint/issues
+Config/roxygen2/version: 8.1.0

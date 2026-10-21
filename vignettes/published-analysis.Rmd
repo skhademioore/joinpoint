@@ -1,0 +1,201 @@
+---
+title: "Reproducing a published analysis: prepregnancy BMI in Ontario"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Reproducing a published analysis: prepregnancy BMI in Ontario}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>", fig.width = 7,
+                      fig.height = 4.2, dpi = 150, out.width = "100%")
+```
+
+Khademioore and colleagues (2026, *Canadian Journal of Public Health*)
+studied the prepregnancy body mass index (BMI) of 1.17 million singleton
+births in Ontario from fiscal year 2012-2013 to 2021-2022. Among other
+analyses, they fitted a joinpoint regression model to the yearly mean BMI,
+selecting the number of joinpoints by BIC, and concluded that BMI was stable until 2016 and rose
+afterwards. Their Table 4 reports:
+
+| Segment | Period | Slope (95% CI) | p |
+|---|---|---|---|
+| 1 | 2012-2016 | 0.016 (-0.035, 0.067) | 0.49 |
+| 2 | 2016-2021 | 0.125 (0.088, 0.162) | < 0.001 |
+
+with a joinpoint at 2016 (95% CI 2014-2019), a slope change of 0.109 per year
+(p = 0.010), and BIC values of 3.73, 2.93 and 3.33 for the models with 0, 1
+and 2 joinpoints.
+
+The article is open access (CC BY 4.0) and its appendix tabulates the yearly
+data, which ship with the package as `ontario_bmi`. This vignette reproduces
+the published analysis in R, draws a publication figure in place of
+Figure 3, and extends the analysis to the BMI categories. Figure 4 of the
+article, mean BMI by age group, ethnicity and parity, cannot be reproduced
+because those yearly series are not published.
+
+## The data
+
+```{r}
+library(joinpoint)
+library(ggplot2)
+mb <- unique(ontario_bmi[c("year", "births", "mean_bmi", "sd_bmi")])
+mb$se <- mb$sd_bmi / sqrt(mb$births)
+mb
+```
+
+The standard error of each yearly mean is the standard deviation divided by
+the square root of the number of births. Supplying it makes the fit
+weighted by the inverse squared standard errors.
+
+## The published model
+
+The authors modeled mean BMI on its original scale, so the segments are
+summarized by slopes in kg/m^2 per year rather than percent changes
+(`log = FALSE`), and they selected the number of joinpoints by BIC with at
+most two joinpoints. The article does not name its interval method; the
+published intervals are symmetric around the estimates, which points to
+parametric intervals.
+
+```{r}
+fit <- joinpoint(mb, year, mean_bmi, se = se, log = FALSE, kmax = 2,
+                 method = "bic", ci_method = "parametric")
+fit
+```
+
+The selection statistics, the slope change at the joinpoint and the
+joinpoint itself:
+
+```{r}
+model_selection(fit)$criteria[, c("joinpoints", "sse", "bic", "selected")]
+est <- model_estimates(fit)
+est[est$parameter == "Slope 2 - Slope 1", c("estimate", "se", "p_value")]
+joinpoints(fit)
+```
+
+The interval of the joinpoint location contains the candidate years whose
+best fit with the joinpoint there has a residual sum of squares within
+`Q (1 + k F / (n - p))` of the minimum `Q` (Lerman 1980), with `F` the
+95% quantile of the F distribution on `k` and `n - p` degrees of freedom.
+The published interval is wider. It matches the variant
+`Q (1 + k / (n - p)) F`, which multiplies the whole bracket by `F` and
+does not narrow as the series gets longer:
+
+```{r}
+fit_lit <- joinpoint(mb, year, mean_bmi, se = se, log = FALSE, kmax = 2,
+                     method = "bic", ci_method = "parametric",
+                     control = jp_control(tau_interval = "literal"))
+joinpoints(fit_lit)[, c("estimate", "lower", "upper")]
+```
+
+Quantity by quantity, with the package values computed from the fits
+above:
+
+```{r, echo = FALSE}
+a <- apc(fit)
+ci <- function(d) sprintf("(%.3f, %.3f)", d$lower, d$upper)
+j <- joinpoints(fit)
+jl <- joinpoints(fit_lit)
+chg <- est[est$parameter == "Slope 2 - Slope 1", ]
+knitr::kable(data.frame(
+  Quantity = c("BIC, 0 to 2 joinpoints", "Joinpoint", "Slopes",
+               "Segment p values", "Slope change (p)", "Slope 95% CIs",
+               "Joinpoint 95% CI"),
+  Published = c("3.73, 2.93, 3.33", "2016", "0.016, 0.125", "0.49, < 0.001",
+                "0.109 (0.010)", "(-0.035, 0.067), (0.088, 0.162)",
+                "2014-2019"),
+  Package = c(
+    paste(sprintf("%.2f", model_selection(fit)$criteria$bic), collapse = ", "),
+    j$estimate, paste(sprintf("%.3f", a$estimate), collapse = ", "),
+    paste(ifelse(a$p_value < 0.001, "< 0.001", sprintf("%.2f", a$p_value)),
+          collapse = ", "),
+    sprintf("%.3f (%.3f)", chg$estimate, chg$p_value),
+    paste(ci(a), collapse = ", "),
+    sprintf("%s-%s; variant %s-%s", j$lower, j$upper, jl$lower, jl$upper)
+  )
+))
+```
+
+The selection, the joinpoint, the slopes, their p values and the slope
+change agree with Table 4. Two quantities do not:
+
+* The published slope limits lie inside the package's by about 0.005. They
+  correspond to t quantiles on 7 to 8 degrees of freedom, while the
+  published p values, like the package's slope intervals and tests, use
+  the 5 degrees of freedom of the separate segment regressions. The degrees of
+  freedom of the published intervals are an inference; the article does not
+  report them.
+* The published joinpoint interval is reproduced by the conservative
+  variant only.
+
+Because the appendix rounds the yearly means to one decimal, the remaining
+digits cannot be checked further.
+
+## A better figure
+
+The published Figure 3 shows the yearly means and the fitted segments. The
+same information, with the uncertainty of each yearly mean and the slope
+intervals written on the segments, makes a cleaner figure:
+
+```{r}
+autoplot(fit, error_bars = TRUE, labels = "ci") +
+  labs(x = "Fiscal year (start)", y = expression("Mean BMI (kg/m"^2 * ")"))
+```
+
+`jp_table()` gives the manuscript table, including the average annual change
+(AAC) over the full period, the linear model counterpart of the AAPC:
+
+```{r}
+knitr::kable(jp_table(fit, digits = 3))
+```
+
+## Extending the analysis: BMI categories
+
+A mean can hide shifts in the tails. The appendix also gives the number of
+births in each World Health Organization category, so the prevalence of each
+category can be analyzed with its binomial standard error. With
+`type = "percent"`, `count` and `population`, `joinpoint()` computes the
+percentages and their standard errors. A log-linear model summarizes each
+period by the relative change in prevalence, the natural scale for
+prevalences that differ by an order of magnitude.
+
+```{r}
+fit_cat <- joinpoint(ontario_bmi, year, count = count, population = births,
+                     by = "category", type = "percent", kmax = 2,
+                     method = "bic", ci_method = "parametric")
+```
+
+On a logarithmic axis the parallel shape of the obesity classes and the
+divergence of underweight and normal weight stand out:
+
+```{r, fig.height = 5}
+autoplot(fit_cat, layout = "overlay", labels = "none", error_bars = TRUE,
+         log_y = TRUE) +
+  labs(x = "Fiscal year (start)", y = "Prevalence (%)")
+```
+
+Panels colored by trend direction show where each category turned:
+
+```{r, fig.height = 6, fig.width = 8}
+autoplot(fit_cat, color_by = "trend", error_bars = TRUE, aapc = TRUE) +
+  labs(x = "Fiscal year (start)", y = "Prevalence (%)")
+```
+
+The overweight and underweight series turn in 2016, the year the mean
+turned, while obesity class I was already rising from 2014. Obesity class II
+rose steadily over the whole decade. The full set of trends:
+
+```{r}
+knitr::kable(jp_table(fit_cat, digits = 2))
+```
+
+## References
+
+Khademioore S, Darling EK, D'Souza R, Muraca GM, Guo Y, Anderson LN (2026).
+Prepregnancy body mass index in Ontario from 2012 to 2022: a
+population-based descriptive study. *Canadian Journal of Public Health*.
+doi:10.17269/s41997-026-01214-w
+
+Lerman PM (1980). Fitting segmented regression models by grid search.
+*Journal of the Royal Statistical Society, Series C* 29:77-84.

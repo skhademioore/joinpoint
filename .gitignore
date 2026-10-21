@@ -1,0 +1,12 @@
+.DS_Store
+.Rproj.user
+.Rhistory
+.RData
+src/*.o
+src/*.so
+src/*.dll
+documentation/
+docs/
+*.Rcheck/
+joinpoint_*.tar.gz
+/.gstack/

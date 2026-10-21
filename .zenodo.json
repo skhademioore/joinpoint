@@ -1,0 +1,45 @@
+{
+  "title": "joinpoint: Trend Analysis by Joinpoint Regression",
+  "description": "Fits joinpoint (segmented line) regression models for trend analysis of rates, proportions, counts and other series. Joinpoints are located by an exhaustive grid search and the number of joinpoints is selected by the weighted Bayesian information criterion, BIC, BIC3, modified BIC, data dependent selection, the sequential permutation test or a Monte Carlo likelihood ratio test. Provides annual percent change (APC) and average annual percent change (AAPC) estimates with parametric and empirical quantile confidence intervals, heteroscedastic and autocorrelated error options, Poisson and logistic joinpoint models, covariate adjustment, continuous joinpoints, jump and comparability ratio models, pairwise comparisons of trends, clustering of contiguous age groups, age adjustment, and ggplot2 graphics.",
+  "upload_type": "software",
+  "license": "GPL-3.0-or-later",
+  "access_right": "open",
+  "creators": [
+    {
+      "name": "Khademioore, Sahar",
+      "orcid": "0000-0002-3025-0006"
+    }
+  ],
+  "keywords": [
+    "joinpoint regression",
+    "segmented regression",
+    "trend analysis",
+    "annual percent change",
+    "change point",
+    "epidemiology",
+    "cancer surveillance",
+    "R"
+  ],
+  "related_identifiers": [
+    {
+      "identifier": "https://github.com/skhademioore/joinpoint",
+      "relation": "isSupplementTo",
+      "scheme": "url"
+    },
+    {
+      "identifier": "10.1002/(SICI)1097-0258(20000215)19:3<335::AID-SIM336>3.0.CO;2-Z",
+      "relation": "references",
+      "scheme": "doi"
+    },
+    {
+      "identifier": "10.2307/2346413",
+      "relation": "references",
+      "scheme": "doi"
+    },
+    {
+      "identifier": "10.1002/sim.9407",
+      "relation": "references",
+      "scheme": "doi"
+    }
+  ]
+}

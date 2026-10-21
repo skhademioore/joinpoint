@@ -1,0 +1,94 @@
+---
+title: "Which age groups share a trend? Age adjustment and clustering"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Which age groups share a trend? Age adjustment and clustering}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>", fig.width = 7.5,
+                      fig.height = 4.2, dpi = 150, out.width = "100%")
+```
+
+An age adjusted rate is a weighted average of age specific rates. When all
+age groups share a trend, the average describes each of them. When they do
+not, it can hide opposite movements: colorectal cancer incidence, for
+example, has been falling in older adults and rising in younger adults, and
+the age adjusted rate for all ages mostly reflects the older age groups,
+where rates are highest.
+
+Analyzing every age group separately is the opposite extreme: many noisy
+series, many tests. Multi-group clustering finds the middle ground. It partitions contiguous age groups into clusters
+whose trends are as parallel as possible within a cluster and different
+between clusters, then fits one model to the age adjusted rate of each
+cluster.
+
+## A known truth
+
+To see whether clustering finds the right answer, we simulate incidence
+counts for eight ten year age groups over 1990 to 2019. The four younger
+groups rise steadily by 2% per year; the four older groups rise by 1% per
+year until 2005 and fall by 3% per year afterwards.
+
+```{r}
+library(joinpoint)
+library(ggplot2)
+set.seed(2026)
+ages <- sprintf("%02d-%02d", seq(0, 70, 10), seq(9, 79, 10))
+sim <- expand.grid(year = 1990:2019, age = ages, stringsAsFactors = FALSE)
+older <- match(sim$age, ages) > 4
+log_rate <- log(2) + 0.35 * match(sim$age, ages) +
+  ifelse(older, 0.01 * (sim$year - 1990) - 0.04 * pmax(sim$year - 2005, 0),
+         0.02 * (sim$year - 1990))
+sim$population <- 1e7
+sim$count <- rpois(nrow(sim), exp(log_rate) * 100)
+```
+
+## The age adjusted rate hides the divergence
+
+`age_adjust()` computes directly standardized rates and their standard
+errors. Here the 2000 United States standard population, up to age 79, is
+collapsed into the same ten year groups.
+
+```{r}
+us <- subset(std_populations, standard == "us2000")[1:17, ]
+grp <- c(rep(ages[1], 3), rep(ages[-1], each = 2))
+data.frame(us$age_group, grp)[c(1:4, 16:17), ]
+std <- tapply(us$population, grp, sum)
+aa <- age_adjust(sim, year, count, population, age, std)
+fit_all <- joinpoint(aa, year, rate, se = se, kmax = 2,
+                     ci_method = "parametric")
+autoplot(fit_all) + labs(y = "Age adjusted rate per 100,000")
+```
+
+The all ages trend shows one turning point and a decline, the story of the
+older groups. The steady rise in younger people is invisible.
+
+## Clustering the age groups
+
+`jp_cluster()` runs the whole algorithm: it compresses sparse age groups,
+fits parallel joinpoint models to every block of contiguous groups, finds
+the best partition for each number of clusters, selects the number of
+clusters by BIC, and fits the final models to the age adjusted rates of
+each cluster.
+
+```{r}
+cl <- jp_cluster(sim, year, count, population, age, std, kmax = 2,
+                 ci_method = "parametric")
+cl$selection[, c("clusters", "Q", "bic", "selected", "partition")]
+cl$clusters
+```
+
+The BIC selects two clusters, 0 to 39 and 40 to 79 years, which is the truth
+of the simulation. The final fits recover the two trends:
+
+```{r}
+autoplot(cl$fit, labels = "ci") + labs(y = "Age adjusted rate per 100,000")
+```
+
+When the differences between neighboring clusters are too small to be of
+interest, the clustering MADWD (`madwd`, in percentage points) reduces the
+number of clusters until every pair of adjacent clusters differs by at
+least that much on average.

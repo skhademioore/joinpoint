@@ -1,0 +1,93 @@
+# -----------------------------------------------------------------------------
+# Citation File Format (https://citation-file-format.github.io/).
+# Machine-readable citation metadata for GitHub, Zenodo, and FAIR tooling.
+# The R-level citation lives in inst/CITATION; the software metadata
+# crosswalk is in codemeta.json; Zenodo deposit metadata is in .zenodo.json.
+# -----------------------------------------------------------------------------
+cff-version: 1.2.0
+message: 'To cite the joinpoint package in publications use:'
+type: software
+license: GPL-3.0-or-later
+title: 'joinpoint: Trend Analysis by Joinpoint Regression'
+version: 0.1.0
+date-released: '2026-10-10'
+abstract: >-
+  Fits joinpoint (segmented line) regression models for trend analysis of
+  rates, proportions, counts and other series. Joinpoints are located by an
+  exhaustive grid search and the number of joinpoints is selected by the
+  weighted Bayesian information criterion, BIC, BIC3, modified BIC, data
+  dependent selection, the sequential permutation test or a Monte Carlo
+  likelihood ratio test. Provides annual percent change (APC) and average
+  annual percent change (AAPC) estimates with parametric and empirical
+  quantile confidence intervals, heteroscedastic and autocorrelated error
+  options, Poisson and logistic joinpoint models, covariate adjustment,
+  continuous joinpoints, jump and comparability ratio models, pairwise
+  comparisons of trends, clustering of contiguous age groups, age adjustment,
+  and ggplot2 graphics.
+authors:
+  - family-names: Khademioore
+    given-names: Sahar
+    email: sahar.khademi975@gmail.com
+    orcid: https://orcid.org/0000-0002-3025-0006
+repository-code: https://github.com/skhademioore/joinpoint
+url: https://github.com/skhademioore/joinpoint
+keywords:
+  - joinpoint regression
+  - segmented regression
+  - trend analysis
+  - annual percent change
+  - change point
+  - epidemiology
+  - cancer surveillance
+  - r
+references:
+  - type: article
+    title: Permutation tests for joinpoint regression with applications to cancer rates
+    authors:
+      - family-names: Kim
+        given-names: Hyune-Ju
+      - family-names: Fay
+        given-names: Michael P.
+      - family-names: Feuer
+        given-names: Eric J.
+      - family-names: Midthune
+        given-names: Douglas N.
+    journal: Statistics in Medicine
+    year: '2000'
+    volume: '19'
+    issue: '3'
+    start: 335
+    end: 351
+    doi: 10.1002/(SICI)1097-0258(20000215)19:3<335::AID-SIM336>3.0.CO;2-Z
+  - type: article
+    title: Fitting segmented regression models by grid search
+    authors:
+      - family-names: Lerman
+        given-names: P. M.
+    journal: 'Journal of the Royal Statistical Society: Series C'
+    year: '1980'
+    volume: '29'
+    start: 77
+    end: 84
+    doi: 10.2307/2346413
+  - type: article
+    title: >-
+      Twenty years since Joinpoint 1.0: two major enhancements, their
+      justification, and impact
+    authors:
+      - family-names: Kim
+        given-names: Hyune-Ju
+      - family-names: Chen
+        given-names: Huann-Sheng
+      - family-names: Byrne
+        given-names: Jeffrey
+      - family-names: Wheeler
+        given-names: Bill
+      - family-names: Feuer
+        given-names: Eric J.
+    journal: Statistics in Medicine
+    year: '2022'
+    volume: '41'
+    start: 3102
+    end: 3130
+    doi: 10.1002/sim.9407
