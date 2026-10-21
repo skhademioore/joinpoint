@@ -191,7 +191,8 @@ jp_plot_data <- function(object, model, cohorts = NULL, digits = 1,
 #' @param labels Segment labels: `"apc"` (APC, or slope for linear models),
 #'   `"ci"` (APC with its confidence interval) or `"none"`. The default is
 #'   `"apc"`, or `"none"` when several cohorts are overlaid.
-#' @param aapc Add the full range AAPC to the title (one cohort), to each
+#' @param aapc Add the AAPC of the first range (the full range by default,
+#'   see `aapc_full` in [jp_control()]) to the title (one cohort), to each
 #'   panel title (facets) or to each legend entry (overlaid cohorts).
 #' @param band Draw the pointwise 95% band of the fitted curve from the
 #'   empirical quantile resamples, when available.
@@ -406,6 +407,8 @@ autoplot.joinpoint <- function(object, model = "final",
 # of a line as fractions of the panel.
 jp_place_labels <- function(d, xr, yr, tf, cx, cy, cw, lh) {
   d <- d[order(d$x), ]
+  # A flat series has no y range; give it the unit range ggplot2 draws.
+  if (!isTRUE(diff(yr) > 0)) yr <- yr + c(-0.5, 0.5)
   X <- (d$x - xr[1L]) / diff(xr)
   Y <- (tf(d$y) - yr[1L]) / diff(yr)
   CX <- (cx - xr[1L]) / diff(xr)

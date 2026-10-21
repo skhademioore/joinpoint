@@ -10,6 +10,15 @@ test_that("age adjustment matches the direct standardization formula", {
   expect_equal(out$se[1], se1)
 })
 
+test_that("the standard population may be a bare column of the data", {
+  d <- data.frame(t = rep(1:2, each = 3), age = rep(c("a", "b", "c"), 2),
+                  n = c(5, 10, 20, 6, 12, 25), p = rep(c(1e4, 2e4, 5e3), 2))
+  d$s <- c(a = 1, b = 2, c = 1)[d$age]
+  out <- age_adjust(d, t, n, p, age, c(a = 1, b = 2, c = 1))
+  expect_equal(age_adjust(d, t, n, p, age, s), out)
+  expect_equal(age_adjust(d, t, n, p, age, "s"), out)
+})
+
 test_that("pairwise comparison accepts parallel trends", {
   set.seed(4)
   x <- 1:25
@@ -58,6 +67,15 @@ test_that("plots build without errors", {
     plot_residuals(fit, "acf")
   )
   for (p in plots) expect_silent(ggplot2::ggplot_build(p))
+})
+
+test_that("flat series can be plotted", {
+  flat <- joinpoint(data.frame(x = 1:10, y = 0), x, y, log = FALSE,
+                    kmax = 0, ci_method = "parametric")
+  expect_silent(ggplot2::ggplot_build(autoplot(flat)))
+  flat <- joinpoint(data.frame(x = 1:10, y = 5), x, y, kmax = 0,
+                    ci_method = "parametric")
+  expect_silent(ggplot2::ggplot_build(autoplot(flat, log_y = TRUE)))
 })
 
 test_that("results export to text files", {

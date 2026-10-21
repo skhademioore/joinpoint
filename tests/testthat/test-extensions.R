@@ -150,6 +150,19 @@ test_that("covariates enter predictions, residuals and degrees of freedom", {
   expect_error(predict(f, newdata = data.frame(x = 5)), "z")
 })
 
+test_that("covariates named like the model's coefficients are refused", {
+  set.seed(5)
+  d <- data.frame(x = 1:20, slope = rnorm(20))
+  d$y <- 1 + 0.2 * d$x + 1.5 * d$slope + rnorm(20, sd = 0.1)
+  expect_error(joinpoint(d, x, y, type = "other", log = FALSE, kmax = 0,
+                         covariates = ~ slope, ci_method = "parametric"),
+               "rename slope")
+  names(d)[2L] <- "delta1"
+  expect_error(joinpoint(d, x, y, type = "other", log = FALSE, kmax = 1,
+                         covariates = ~ delta1, ci_method = "parametric"),
+               "rename delta1")
+})
+
 test_that("continuous joinpoints beat every admissible fine grid placement", {
   # Weighted two-joinpoint series on which a local refinement failed; `fine`
   # holds an admissible placement found on a grid of ten points per gap.

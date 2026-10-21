@@ -42,7 +42,8 @@ cohorts in one panel.}
 \code{"ci"} (APC with its confidence interval) or \code{"none"}. The default is
 \code{"apc"}, or \code{"none"} when several cohorts are overlaid.}
 
-\item{aapc}{Add the full range AAPC to the title (one cohort), to each
+\item{aapc}{Add the AAPC of the first range (the full range by default,
+see \code{aapc_full} in \code{\link[=jp_control]{jp_control()}}) to the title (one cohort), to each
 panel title (facets) or to each legend entry (overlaid cohorts).}
 
 \item{band}{Draw the pointwise 95\% band of the fitted curve from the

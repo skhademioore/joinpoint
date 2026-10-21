@@ -21,11 +21,13 @@
 #'   simulations. Values of 10 to 20 save most of the time of tests that do
 #'   not reject.
 #' @param perm_seed Random number seed for the permutation test (`NULL` for
-#'   the current random number stream).
+#'   the current random number stream). The global random number state is
+#'   saved before the seed is set and restored afterwards.
 #' @param n_resample Number of resampled data sets for the empirical quantile
 #'   confidence intervals (default 5001).
 #' @param eq_seed Random number seed for the empirical quantile method
-#'   (`NULL` for the current random number stream).
+#'   (`NULL` for the current random number stream). The global random number
+#'   state is saved before the seed is set and restored afterwards.
 #' @param eq_final_only Use the empirical quantile method only for the final
 #'   selected model; other models get parametric intervals.
 #' @param seed_mode `"constant"` uses the same seed for every cohort;
@@ -177,6 +179,8 @@ jp_control <- function(min_obs_end = 2, min_obs_between = 2, n_grid = 0,
 #' @param covariates Optional one-sided formula of covariates adjusted for in
 #'   every segment, for example `~ factor(month)` for seasonality. The
 #'   covariates are centered, so the fitted trend refers to their average.
+#'   Their names must differ from those of the model's own coefficients:
+#'   `intercept`, `slope`, `jump` and `delta1`, `delta2`, and so on.
 #' @param continuous Estimate joinpoints anywhere between observations
 #'   (Hudson 1966) instead of only at the grid points: every placement of
 #'   joinpoints at observations or inside the gaps between them is examined,
@@ -303,7 +307,8 @@ joinpoint <- function(data, x, y = NULL, by = NULL, se = NULL, count = NULL,
   }
   variance <- match.arg(variance, c("constant", "se", "poisson", "glm"))
   if (!(identical(autocorrelation, "estimate") ||
-        (is.numeric(autocorrelation) && abs(autocorrelation) < 1))) {
+        (is.numeric(autocorrelation) && length(autocorrelation) == 1L &&
+         isTRUE(abs(autocorrelation) < 1)))) {
     stop("`autocorrelation` must be \"estimate\" or a number in (-1, 1).",
          call. = FALSE)
   }
@@ -311,6 +316,11 @@ joinpoint <- function(data, x, y = NULL, by = NULL, se = NULL, count = NULL,
       variance == "poisson") {
     stop("Autocorrelated errors are available with constant variance or ",
          "standard errors only.", call. = FALSE)
+  }
+  if (!is.null(jump) &&
+      !(is.numeric(jump) && length(jump) == 1L && is.finite(jump))) {
+    stop("`jump` must be a single number, the last x of the old coding.",
+         call. = FALSE)
   }
   if (!is.null(jump) && !log) {
     stop("Jump and comparability ratio models require `log = TRUE`.",
@@ -321,8 +331,11 @@ joinpoint <- function(data, x, y = NULL, by = NULL, se = NULL, count = NULL,
       stop("A comparability ratio needs `jump`, the last x of the old coding.",
            call. = FALSE)
     }
-    if (comparability_ratio < 0.01 || comparability_ratio > 100 ||
-        cr_variance < 0 || cr_variance > 100) {
+    in_range <- function(v, lo, hi) {
+      is.numeric(v) && length(v) == 1L && !is.na(v) && v >= lo && v <= hi
+    }
+    if (!in_range(comparability_ratio, 0.01, 100) ||
+        !in_range(cr_variance, 0, 100)) {
       stop("`comparability_ratio` must lie in [0.01, 100] and `cr_variance` ",
            "in [0, 100].", call. = FALSE)
     }
@@ -411,6 +424,15 @@ joinpoint <- function(data, x, y = NULL, by = NULL, se = NULL, count = NULL,
         Z0 <- stats::model.matrix(stats::terms(mf), mf)
         Z <- Z0[d$row, colnames(Z0) != "(Intercept)", drop = FALSE]
         if (anyNA(Z)) stop("Missing covariate values.", call. = FALSE)
+        # Coefficients are looked up by name, so covariates must not take
+        # the names of the model's own coefficients.
+        clash <- colnames(Z) %in% c("intercept", "slope", "jump") |
+          grepl("^delta[0-9]+$", colnames(Z))
+        if (any(clash)) {
+          stop("Covariates cannot be named intercept, slope, jump or delta1, ",
+               "delta2, ..., the names of the model's own coefficients; ",
+               "rename ", toString(colnames(Z)[clash]), ".", call. = FALSE)
+        }
         ctr <- colMeans(Z[d$included, , drop = FALSE])
         spec$covariates <- sweep(Z, 2L, ctr)
         # Everything needed to rebuild the design for new data: the terms

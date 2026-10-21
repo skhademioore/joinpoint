@@ -55,13 +55,15 @@ simulations. Values of 10 to 20 save most of the time of tests that do
 not reject.}
 
 \item{perm_seed}{Random number seed for the permutation test (\code{NULL} for
-the current random number stream).}
+the current random number stream). The global random number state is
+saved before the seed is set and restored afterwards.}
 
 \item{n_resample}{Number of resampled data sets for the empirical quantile
 confidence intervals (default 5001).}
 
 \item{eq_seed}{Random number seed for the empirical quantile method
-(\code{NULL} for the current random number stream).}
+(\code{NULL} for the current random number stream). The global random number
+state is saved before the seed is set and restored afterwards.}
 
 \item{eq_final_only}{Use the empirical quantile method only for the final
 selected model; other models get parametric intervals.}

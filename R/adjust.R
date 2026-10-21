@@ -39,12 +39,15 @@ age_adjust <- function(data, x, count, population, age, standard, by = NULL,
   pn <- jp_col(substitute(population), data, "population")
   an <- jp_col(substitute(age), data, "age")
   dn <- jp_col(substitute(delay), data, "delay")
-  std <- jp_std_rows(substitute(standard), standard, data, an)
+  std_expr <- substitute(standard)
+  std <- jp_std_rows(std_expr, standard, data, an)
   cnt <- data[[cn]]
   pop <- data[[pn]]
   dl <- if (is.null(dn)) rep(1, nrow(data)) else data[[dn]]
   jp_check_age_data(data, xn, an, by, cnt, pop, std, dl, rate_per)
-  if (is.numeric(standard) && !is.null(names(standard))) {
+  # A bare column name of `data` is not evaluated outside it.
+  in_data <- is.name(std_expr) && as.character(std_expr) %in% names(data)
+  if (!in_data && is.numeric(standard) && !is.null(names(standard))) {
     extra <- setdiff(names(standard), as.character(data[[an]]))
     if (length(extra)) {
       message("Standardized to the ", length(standard) - length(extra),

@@ -98,7 +98,9 @@ intervals and the joinpoint interval is based on the profile deviance.}
 
 \item{covariates}{Optional one-sided formula of covariates adjusted for in
 every segment, for example \code{~ factor(month)} for seasonality. The
-covariates are centered, so the fitted trend refers to their average.}
+covariates are centered, so the fitted trend refers to their average.
+Their names must differ from those of the model's own coefficients:
+\code{intercept}, \code{slope}, \code{jump} and \code{delta1}, \code{delta2}, and so on.}
 
 \item{continuous}{Estimate joinpoints anywhere between observations
 (Hudson 1966) instead of only at the grid points: every placement of

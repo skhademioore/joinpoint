@@ -49,7 +49,8 @@ jp_light_select <- function(x, y, S, models, method, ctrl, cand, cons,
 #' selected for each cohort and `K0` the number selected for the two cohorts
 #' fitted together under the null hypothesis. For each pair whose test
 #' rejects the null hypothesis (after any p value adjustment) the AAPCs of
-#' the two cohorts are compared by a z test with parametric variances, also
+#' the two cohorts of a log-linear fit are compared by a z test with
+#' parametric variances, also
 #' when the fit used empirical quantile intervals; these follow-up p values
 #' are not adjusted.
 #'
