@@ -61,7 +61,7 @@ joinpoints(fit_tb)
 each segment. The shaded band is the 95% empirical quantile interval of the
 fitted curve.
 
-```{r, fig.height = 4}
+```{r, fig.height = 4, fig.alt = "Tuberculosis death rate by year, 1900 to 1998, falling throughout, with the fitted model with three joinpoints, the APC of each segment, the 95% band of the fitted curve and gray bands for the confidence intervals of the joinpoint locations."}
 autoplot(fit_tb, joinpoint_ci = TRUE)
 ```
 
@@ -82,7 +82,7 @@ summary of the epidemiological transition. On a logarithmic axis equal
 percent changes look equally steep within a panel; the panels have their
 own scales, so compare slopes across causes through their APCs.
 
-```{r, fig.height = 6}
+```{r, fig.height = 6, fig.alt = "Six panels, one per cause of death, of age adjusted death rates on logarithmic axes, with the fitted segments colored by whether the trend significantly increased, significantly decreased or was stable."}
 autoplot(fit, color_by = "trend", log_y = TRUE) +
   labs(x = NULL, y = "Age adjusted death rate per 100,000")
 ```
@@ -91,7 +91,7 @@ When the question is "how fast did each trend change, and when", the APC
 plot reads more directly than the data. Each segment is drawn over the years
 it covers, at the height of its APC, with its confidence interval as a band.
 
-```{r, fig.height = 6}
+```{r, fig.height = 6, fig.alt = "Six panels showing, for each cause of death, the APC of every segment as a step over the years it covers, with confidence bands and a reference line at zero."}
 plot_apc(fit)
 ```
 
@@ -99,7 +99,7 @@ AAPCs are best compared in a forest plot. The fit above requested the
 last ten years in addition to the full range through
 `jp_control(aapc_last = 10)`.
 
-```{r, fig.height = 3.8}
+```{r, fig.height = 3.8, fig.alt = "Forest plot of the average annual percent change of each cause of death over the full range and over the last ten years, with confidence intervals."}
 plot_aapc(fit)
 ```
 

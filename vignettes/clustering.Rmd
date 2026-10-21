@@ -52,7 +52,7 @@ sim$count <- rpois(nrow(sim), exp(log_rate) * 100)
 errors. Here the 2000 United States standard population, up to age 79, is
 collapsed into the same ten year groups.
 
-```{r}
+```{r, fig.alt = "Simulated age adjusted incidence rate by year, 1990 to 2019, with the fitted joinpoint model: a rise, one joinpoint, then a decline."}
 us <- subset(std_populations, standard == "us2000")[1:17, ]
 grp <- c(rep(ages[1], 3), rep(ages[-1], each = 2))
 data.frame(us$age_group, grp)[c(1:4, 16:17), ]
@@ -84,7 +84,7 @@ cl$clusters
 The BIC selects two clusters, 0 to 39 and 40 to 79 years, which is the truth
 of the simulation. The final fits recover the two trends:
 
-```{r}
+```{r, fig.alt = "Age adjusted rates of the two clusters of age groups by year, with their fitted joinpoint models and the APC of each segment with its confidence interval: a steady rise in one cluster and a rise followed by a decline in the other."}
 autoplot(cl$fit, labels = "ci") + labs(y = "Age adjusted rate per 100,000")
 ```
 

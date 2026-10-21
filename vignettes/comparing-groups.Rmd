@@ -52,7 +52,7 @@ par_test
 The trends are not parallel. The plot compares the separate fits (solid)
 with the best parallel fit (dashed):
 
-```{r}
+```{r, fig.alt = "Heart disease and stroke death rates by year from 1950 on a logarithmic axis, with the separately fitted joinpoint models as solid lines and the best parallel model as dashed lines."}
 autoplot(par_test, log_y = TRUE)
 ```
 

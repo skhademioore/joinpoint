@@ -138,7 +138,7 @@ The published Figure 3 shows the yearly means and the fitted segments. The
 same information, with the uncertainty of each yearly mean and the slope
 intervals written on the segments, makes a cleaner figure:
 
-```{r}
+```{r, fig.alt = "Mean prepregnancy BMI in Ontario by fiscal year with 95% error bars and the fitted linear joinpoint model, with the slope of each segment and its confidence interval written on the segment."}
 autoplot(fit, error_bars = TRUE, labels = "ci") +
   labs(x = "Fiscal year (start)", y = expression("Mean BMI (kg/m"^2 * ")"))
 ```
@@ -169,7 +169,7 @@ fit_cat <- joinpoint(ontario_bmi, year, count = count, population = births,
 On a logarithmic axis the parallel shape of the obesity classes and the
 divergence of underweight and normal weight stand out:
 
-```{r, fig.height = 5}
+```{r, fig.height = 5, fig.alt = "Prevalence of the six BMI categories by fiscal year in one panel on a logarithmic axis, with 95% error bars and the fitted joinpoint models."}
 autoplot(fit_cat, layout = "overlay", labels = "none", error_bars = TRUE,
          log_y = TRUE) +
   labs(x = "Fiscal year (start)", y = "Prevalence (%)")
@@ -177,7 +177,7 @@ autoplot(fit_cat, layout = "overlay", labels = "none", error_bars = TRUE,
 
 Panels colored by trend direction show where each category turned:
 
-```{r, fig.height = 6, fig.width = 8}
+```{r, fig.height = 6, fig.width = 8, fig.alt = "Six panels, one per BMI category, showing prevalence by fiscal year with 95% error bars, segments colored by trend direction, and the average annual percent change in each panel title."}
 autoplot(fit_cat, color_by = "trend", error_bars = TRUE, aapc = TRUE) +
   labs(x = "Fiscal year (start)", y = "Prevalence (%)")
 ```

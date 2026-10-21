@@ -2,13 +2,13 @@
 
 <!-- badges: start -->
 [![CRAN status](https://www.r-pkg.org/badges/version/joinpoint)](https://CRAN.R-project.org/package=joinpoint)
-[![R-universe](https://skhademioore.r-universe.dev/joinpoint/badges/version)](https://skhademioore.r-universe.dev/joinpoint)
 [![R-CMD-check](https://github.com/skhademioore/joinpoint/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/skhademioore/joinpoint/actions/workflows/R-CMD-check.yaml)
+[![pkgdown](https://github.com/skhademioore/joinpoint/actions/workflows/pkgdown.yaml/badge.svg)](https://skhademioore.github.io/joinpoint/)
 [![Lifecycle: experimental](https://img.shields.io/badge/lifecycle-experimental-orange.svg)](https://lifecycle.r-lib.org/articles/stages.html#experimental)
 [![License: GPL (>= 3)](https://img.shields.io/badge/License-GPL%20(%3E%3D%203)-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
-[![DOI](https://zenodo.org/badge/1412542926.svg)](https://zenodo.org/badge/latestdoi/1412542926)
 <!-- Badges to enable later (uncomment each):
-[![pkgdown](https://github.com/skhademioore/joinpoint/actions/workflows/pkgdown.yaml/badge.svg)](https://skhademioore.github.io/joinpoint/)
+[![R-universe](https://skhademioore.r-universe.dev/joinpoint/badges/version)](https://skhademioore.r-universe.dev/joinpoint)
+[![DOI](https://zenodo.org/badge/1425996950.svg)](https://zenodo.org/badge/latestdoi/1425996950)
 [![Archived on Software Heritage](https://archive.softwareheritage.org/badge/origin/https://github.com/skhademioore/joinpoint/)](https://archive.softwareheritage.org/browse/origin/?origin_url=https://github.com/skhademioore/joinpoint)
 -->
 <!-- badges: end -->
@@ -25,7 +25,10 @@ of the literature: Poisson and logistic joinpoint models, continuous
 joinpoints, covariates, jump and comparability ratio models for coding
 changes, pairwise comparisons of trends, and clustering of age groups.
 
-![](man/figures/README-trend.png)
+Documentation, articles and the function reference are on the package
+website: <https://skhademioore.github.io/joinpoint/>.
+
+![Six panels of age adjusted United States death rates from 1900 to 1998, one per cause of death, with fitted joinpoint models whose segments are colored by trend direction and labeled with their annual percent changes.](man/figures/README-trend.png)
 
 ## Installation
 
@@ -129,35 +132,41 @@ independent computations:
 
 ## Vignettes
 
-Each vignette tells one analysis from question to figure. Read them with
-`vignette(package = "joinpoint")` after installation, or open the rendered
-HTML files in [`vignettes/`](vignettes/), in reading order:
+Each vignette tells one analysis from question to figure. Read them on the
+[package website](https://skhademioore.github.io/joinpoint/articles/), or
+with `vignette(package = "joinpoint")` after installation, in reading order:
 
 *Getting started*
 
-- `vignette("joinpoint")`: a century of United States mortality, from a first
-  fit to a manuscript table
-  ([HTML](vignettes/joinpoint.html))
-- `vignette("published-analysis")`: reproducing a published analysis of
-  prepregnancy BMI in Ontario, quantity by quantity
-  ([HTML](vignettes/published-analysis.html))
+- [`vignette("joinpoint")`](https://skhademioore.github.io/joinpoint/articles/joinpoint.html):
+  a century of United States mortality, from a first fit to a manuscript
+  table
+- [`vignette("published-analysis")`](https://skhademioore.github.io/joinpoint/articles/published-analysis.html):
+  reproducing a published analysis of prepregnancy BMI in Ontario, quantity
+  by quantity
 
 *Methods*
 
-- `vignette("model-selection")`: how many joinpoints? The selection rules,
-  the permutation test, and joinpoints too small to matter
-  ([HTML](vignettes/model-selection.html))
-- `vignette("uncertainty")`: how certain is a trend? Error models and
-  parametric versus empirical quantile intervals
-  ([HTML](vignettes/uncertainty.html))
-- `vignette("comparing-groups")`: did two trends move together? Tests of
-  parallelism and coincidence ([HTML](vignettes/comparing-groups.html))
-- `vignette("coding-changes")`: breaks that are not trends, from outliers to
-  coding changes ([HTML](vignettes/coding-changes.html))
-- `vignette("clustering")`: which age groups share a trend? Age adjustment
-  and clustering ([HTML](vignettes/clustering.html))
-- `vignette("extensions")`: counts, seasons and joinpoints between
-  observations ([HTML](vignettes/extensions.html))
+- [`vignette("model-selection")`](https://skhademioore.github.io/joinpoint/articles/model-selection.html):
+  how many joinpoints? The selection rules, the permutation test, and
+  joinpoints too small to matter
+- [`vignette("uncertainty")`](https://skhademioore.github.io/joinpoint/articles/uncertainty.html):
+  how certain is a trend? Error models and parametric versus empirical
+  quantile intervals
+- [`vignette("comparing-groups")`](https://skhademioore.github.io/joinpoint/articles/comparing-groups.html):
+  did two trends move together? Tests of parallelism and coincidence
+- [`vignette("coding-changes")`](https://skhademioore.github.io/joinpoint/articles/coding-changes.html):
+  breaks that are not trends, from outliers to coding changes
+- [`vignette("clustering")`](https://skhademioore.github.io/joinpoint/articles/clustering.html):
+  which age groups share a trend? Age adjustment and clustering
+- [`vignette("extensions")`](https://skhademioore.github.io/joinpoint/articles/extensions.html):
+  counts, seasons and joinpoints between observations
+
+*Graphics*
+
+- [Graphics gallery](https://skhademioore.github.io/joinpoint/articles/graphics-gallery.html)
+  (website only): every figure the package draws, and how to adapt it for a
+  paper, a slide or a report
 
 ## References
 
@@ -224,14 +233,14 @@ Releases will be archived on [Zenodo](https://zenodo.org/) with a citable DOI
 (the DOI badge appears after the first release). The repository ships
 machine-readable citation and software metadata for FAIR harvesters:
 
-- [`CITATION.cff`](CITATION.cff): Citation File Format (GitHub "Cite this
+- [`CITATION.cff`](https://github.com/skhademioore/joinpoint/blob/main/CITATION.cff): Citation File Format (GitHub "Cite this
   repository", Zenodo).
-- [`codemeta.json`](codemeta.json): CodeMeta 2.0 software metadata crosswalk.
-- [`.zenodo.json`](.zenodo.json): Zenodo deposit metadata (author, ORCID,
+- [`codemeta.json`](https://github.com/skhademioore/joinpoint/blob/main/codemeta.json): CodeMeta 2.0 software metadata crosswalk.
+- [`.zenodo.json`](https://github.com/skhademioore/joinpoint/blob/main/.zenodo.json): Zenodo deposit metadata (author, ORCID,
   license, related identifiers).
-- [`ro-crate-metadata.json`](ro-crate-metadata.json): RO-Crate 1.1 packaging
+- [`ro-crate-metadata.json`](https://github.com/skhademioore/joinpoint/blob/main/ro-crate-metadata.json): RO-Crate 1.1 packaging
   and provenance.
-- [`inst/CITATION`](inst/CITATION): the R-level citation
+- [`inst/CITATION`](https://github.com/skhademioore/joinpoint/blob/main/inst/CITATION): the R-level citation
   (`citation("joinpoint")`).
 
 All carry the GPL-3.0-or-later SPDX identifier and the author's ORCID.

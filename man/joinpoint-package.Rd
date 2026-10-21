@@ -12,6 +12,7 @@ and other series (Kim et al. 2000). The main entry point is \code{\link[=joinpoi
 \seealso{
 Useful links:
 \itemize{
+  \item \url{https://skhademioore.github.io/joinpoint/}
   \item \url{https://github.com/skhademioore/joinpoint}
   \item Report bugs at \url{https://github.com/skhademioore/joinpoint/issues}
 }

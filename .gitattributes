@@ -2,6 +2,3 @@
 # language statistics on the real sources.
 R/RcppExports.R          linguist-generated=true
 src/RcppExports.cpp      linguist-generated=true
-
-# Rendered vignettes (regenerated from vignettes/*.Rmd).
-vignettes/*.html         linguist-generated=true

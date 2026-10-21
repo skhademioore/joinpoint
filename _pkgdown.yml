@@ -1,0 +1,115 @@
+url: https://skhademioore.github.io/joinpoint/
+
+template:
+  bootstrap: 5
+  light-switch: true
+  theme: a11y-light
+  theme-dark: a11y-dark
+  bslib:
+    primary: "#2A78D6"
+    navbar-light-bg: "#E6EFFA"
+    navbar-dark-bg: "#0B2540"
+    base_font: {google: "Source Sans 3"}
+    heading_font: {google: "Roboto"}
+    code_font: {google: "JetBrains Mono"}
+    font-size-base: 1.0625rem
+  includes:
+    in_header: |
+      <meta name="description" content="Joinpoint regression for trend analysis in R: annual percent change (APC), average annual percent change (AAPC), model selection and publication quality graphics.">
+
+home:
+  title: "joinpoint: Trend Analysis by Joinpoint Regression"
+  description: >
+    Joinpoint regression for trend analysis in R: annual percent change
+    (APC), average annual percent change (AAPC), model selection and
+    publication quality graphics.
+
+navbar:
+  structure:
+    left: [intro, reference, articles, news]
+    right: [search, github, lightswitch]
+
+reference:
+- title: Fit joinpoint models
+  desc: >
+    Fit joinpoint models to one or more trend series, and control the grid
+    search, the model selection and the confidence intervals.
+  contents:
+  - joinpoint
+  - jp_control
+
+- title: Trend estimates
+  desc: >
+    Segment APCs, AAPCs and joinpoint locations with their confidence
+    intervals, model selection statistics, regression coefficients and a
+    table for a manuscript.
+  contents:
+  - apc
+  - jp_table
+  - model_selection
+  - model_estimates
+  - jump_estimates
+
+- title: Model methods
+  desc: Standard methods for fitted joinpoint models.
+  contents:
+  - as.data.frame.joinpoint
+  - predict.joinpoint
+  - vcov.joinpoint
+
+- title: Comparing and clustering trends
+  desc: >
+    Tests of parallelism and coincidence, direct age adjustment and
+    clustering of contiguous age groups.
+  contents:
+  - jp_compare
+  - age_adjust
+  - jp_cluster
+
+- title: Graphics
+  desc: Publication quality figures built with ggplot2.
+  contents:
+  - autoplot.joinpoint
+  - plot_apc
+  - plot_models
+  - plot_selection
+  - plot_residuals
+  - autoplot.jp_comparison
+  - theme_joinpoint
+
+- title: Export
+  contents:
+  - jp_export
+
+- title: Data sets
+  contents:
+  - us_mortality
+  - ontario_bmi
+  - std_populations
+
+articles:
+- title: Get started
+  navbar: ~
+  desc: A complete analysis from a first fit to a manuscript table and figure.
+  contents:
+  - joinpoint
+  - published-analysis
+
+- title: Methods
+  navbar: Methods
+  desc: >
+    How the number of joinpoints is chosen, how certain a trend is, and the
+    extensions of the classical model.
+  contents:
+  - model-selection
+  - uncertainty
+  - comparing-groups
+  - coding-changes
+  - clustering
+  - extensions
+
+- title: Graphics
+  navbar: Graphics
+  desc: Every figure the package draws, and how to adapt it.
+  contents:
+  - articles/graphics-gallery

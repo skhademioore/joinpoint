@@ -21,3 +21,8 @@
 ^.*\.Rcheck$
 ^joinpoint_[0-9.]+\.tar\.gz$
 ^cran-comments\.md$
+^LICENSE$
+^_pkgdown\.yml$
+^docs$
+^pkgdown$
+^vignettes/articles$

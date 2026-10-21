@@ -30,7 +30,7 @@ The 1918 influenza pandemic more than doubled mortality from influenza and
 pneumonia for a single year. A least squares fit treats that year as information
 about the trend:
 
-```{r}
+```{r, fig.alt = "Influenza and pneumonia death rate by year, 1900 to 1998, on a logarithmic axis with the fitted joinpoint model; the 1918 pandemic stands out as a single spike."}
 flu <- subset(us_mortality, cause == "Influenza and Pneumonia")
 fit_all <- joinpoint(flu, year, rate, kmax = 3, ci_method = "parametric")
 autoplot(fit_all, log_y = TRUE)
@@ -41,7 +41,7 @@ outlier inflates the residual variance and with it every interval. An
 excluded year is left out of the fit but kept in the data and the graph,
 drawn as a hollow point:
 
-```{r}
+```{r, fig.alt = "The influenza and pneumonia series fitted without 1918, on a logarithmic axis; the excluded 1918 value is drawn as a hollow point."}
 fit_ex <- joinpoint(flu, year, rate, kmax = 3, exclude = 1918,
                     ci_method = "parametric")
 autoplot(fit_ex, log_y = TRUE)
@@ -67,7 +67,7 @@ ratio of rates after and before the change is the comparability ratio.
 ICD-9 replaced ICD-8 in the United States in 1979. The jump model estimates
 the effect of this change on heart disease mortality:
 
-```{r}
+```{r, fig.alt = "Heart disease death rate by year from 1950 with a joinpoint model that allows a jump at the 1978 coding change, marked by a dotted vertical line labeled with the comparability ratio; the fitted line steps up at 1978."}
 heart <- subset(us_mortality, cause == "Heart Disease" & year >= 1950)
 fit_jump <- joinpoint(heart, year, rate, kmax = 3, jump = 1978,
                       ci_method = "parametric")

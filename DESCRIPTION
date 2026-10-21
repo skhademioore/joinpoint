@@ -44,6 +44,7 @@ Suggests:
 VignetteBuilder: knitr
 Config/testthat/edition: 3
 LazyData: true
-URL: https://github.com/skhademioore/joinpoint
+URL: https://skhademioore.github.io/joinpoint/,
+    https://github.com/skhademioore/joinpoint
 BugReports: https://github.com/skhademioore/joinpoint/issues
-Config/roxygen2/version: 8.1.0
+Config/roxygen2/version: 8.1.1

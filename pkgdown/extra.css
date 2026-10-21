@@ -1,0 +1,4 @@
+/* Show R operators such as <- and == as typed, not as ligatures. */
+pre, code {
+  font-variant-ligatures: none;
+}

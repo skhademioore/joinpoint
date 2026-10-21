@@ -86,7 +86,7 @@ distribution whose tails extend beyond the observed residuals. The fitted
 curve band and the joinpoint intervals show the same uncertainty on the
 data scale:
 
-```{r}
+```{r, fig.alt = "Influenza and pneumonia death rate by year on a logarithmic axis with the fitted joinpoint model, the 95% empirical quantile band of the fitted curve and the confidence intervals of the joinpoint locations."}
 autoplot(fit_eq, joinpoint_ci = TRUE, log_y = TRUE)
 ```
 
@@ -96,7 +96,7 @@ Mortality in adjacent years shares unmeasured influences, so errors may be
 positively autocorrelated. The autocorrelation function of the residuals
 shows whether this is plausible:
 
-```{r, fig.height = 3.5}
+```{r, fig.height = 3.5, fig.alt = "Autocorrelation function of the standardized residuals of the influenza and pneumonia model."}
 plot_residuals(fit_par, type = "acf")
 ```
 

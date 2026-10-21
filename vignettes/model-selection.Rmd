@@ -36,7 +36,7 @@ the best fitting model by an exhaustive grid search. Model selection only
 chooses among these best fits. `plot_models()` shows them side by side for
 one cohort, with the criterion of each model in its title.
 
-```{r, fig.height = 5}
+```{r, fig.height = 5, fig.alt = "Small panels showing the best fitting models for stroke mortality with zero to four joinpoints, each titled with its selection criterion."}
 stroke <- subset(us_mortality, cause == "Stroke")
 fit <- joinpoint(stroke, year, rate, kmax = 4, ci_method = "parametric")
 plot_models(fit, ncol = 3)
@@ -60,7 +60,7 @@ The BIC family has the form `ln(SSE / n) + penalty(k) ln(n) / n`:
 
 `plot_selection()` draws the criteria against the number of joinpoints.
 
-```{r, fig.height = 3.5}
+```{r, fig.height = 3.5, fig.alt = "Selection criteria of the stroke models plotted against the number of joinpoints, from zero to four."}
 plot_selection(fit)
 ```
 
@@ -110,7 +110,7 @@ The sequence of tests shows why influenza and pneumonia stopped at one
 joinpoint: the test of one against two joinpoints gave a p value just above
 its level of 0.025.
 
-```{r, fig.height = 4}
+```{r, fig.height = 4, fig.alt = "The sequence of permutation tests for each cause of death: the p value of each test compared with its significance level."}
 plot_selection(fit_perm)
 ```
 
