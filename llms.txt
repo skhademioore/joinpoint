@@ -1,0 +1,402 @@
+# joinpoint: Trend Analysis by Joinpoint Regression
+
+***joinpoint*** fits joinpoint (segmented line) regression models for
+trend analysis (Kim et al. 2000). It finds the points in time at which a
+trend changes, summarizes each period by its annual percent change
+(APC), fixed periods by the average annual percent change (AAPC), and
+draws publication quality figures with ggplot2.
+
+It covers the classical least squares joinpoint model with its error
+models, model selection rules and confidence intervals, together with
+the extensions of the literature: Poisson and logistic joinpoint models,
+continuous joinpoints, covariates, jump and comparability ratio models
+for coding changes, pairwise comparisons of trends, and clustering of
+age groups.
+
+Documentation, articles and the function reference are on the package
+website: <https://skhademioore.github.io/joinpoint/>.
+
+![Six panels of age adjusted United States death rates from 1900 to
+1998, one per cause of death, with fitted joinpoint models whose
+segments are colored by trend direction and labeled with their annual
+percent changes.](reference/figures/README-trend.png)
+
+Six panels of age adjusted United States death rates from 1900 to 1998,
+one per cause of death, with fitted joinpoint models whose segments are
+colored by trend direction and labeled with their annual percent
+changes.
+
+## Installation
+
+``` r
+
+# Development version
+# install.packages("remotes")
+remotes::install_github("skhademioore/joinpoint")
+```
+
+The grid search is compiled C++ (through Rcpp), so installing from
+source needs a C++ toolchain:
+
+- **macOS**: Xcode Command Line Tools (`xcode-select --install`)
+- **Windows**: [Rtools](https://cran.r-project.org/bin/windows/Rtools/)
+- **Linux**: `g++` and `make` (usually present by default)
+
+## Quick start
+
+``` r
+
+library(joinpoint)
+
+fit <- joinpoint(us_mortality, x = year, y = rate, by = "cause", kmax = 3)
+fit                      # joinpoints, APCs and AAPCs for each cause
+apc(fit)                 # segment APCs with confidence intervals
+aapc(fit)                # average annual percent changes
+joinpoints(fit)          # joinpoint locations with confidence intervals
+model_selection(fit)     # selection statistics for every model
+jp_table(fit)            # formatted table for a manuscript
+
+autoplot(fit, color_by = "trend", log_y = TRUE)
+plot_apc(fit)
+plot_aapc(fit)
+```
+
+## What is covered
+
+| Method | Function or argument | Reference |
+|----|----|----|
+| Rates, age adjusted rates, proportions, percents, counts, other values | `joinpoint(type = )`, [`age_adjust()`](https://skhademioore.github.io/joinpoint/reference/age_adjust.md) |  |
+| Linear and log-linear models | `log =` | Kim et al. (2000) |
+| Constant variance, standard errors, Poisson variance | `variance =` |  |
+| First order autocorrelated errors (estimated or given), covariance matrix | `autocorrelation =`, `vcov =` |  |
+| Exhaustive grid search with placement constraints and points between observations | `jp_control(min_obs_end, min_obs_between, n_grid)` | Lerman (1980) |
+| Continuous joinpoints, exact least squares | `continuous = TRUE` | Hudson (1966) |
+| Poisson and logistic joinpoint models, exact maximum likelihood, optional quasi-likelihood dispersion | `family =`, `overdispersion =` | Czajkowski et al. (2008) |
+| Covariates such as seasonal terms | `covariates =` |  |
+| BIC, BIC3, weighted BIC, data dependent selection | `method =` | Kim et al. (2023) |
+| Modified BIC | `method = "mbic"` | Zhang and Siegmund (2007) |
+| Sequential permutation test | `method = "permutation"` | Kim et al. (2000) |
+| Sequential Monte Carlo likelihood ratio test | `method = "lrt"` | Czajkowski et al. (2008) |
+| Early stopping of the Monte Carlo tests | `jp_control(n_exceed = )` | Besag and Clifford (1991) |
+| Minimum APC difference worth detecting | `jp_control(madwd = )` |  |
+| Parametric intervals: APC, AAPC, joinpoint location | `ci_method = "parametric"` | Clegg et al. (2009); Lerman (1980) |
+| Empirical quantile intervals and p values | `ci_method = "empirical"` | Kim et al. (2017, 2022) |
+| AAPC for the full range, last N observations and custom ranges | `jp_control(aapc_full, aapc_last, aapc_ranges)` | Clegg et al. (2009) |
+| Exclusion of data points, shifted x values | `exclude =`, `shift =` |  |
+| Jump model and comparability ratio model | `jump =`, `comparability_ratio =` | Chen et al. (2020) |
+| Pairwise tests of parallelism and coincidence, AAPC comparison, multiplicity adjustment | [`jp_compare()`](https://skhademioore.github.io/joinpoint/reference/jp_compare.md) | Kim et al. (2004) |
+| Multi-group clustering of age groups | [`jp_cluster()`](https://skhademioore.github.io/joinpoint/reference/jp_cluster.md) |  |
+| Model estimates, covariance, goodness of fit (R squared, Durbin-Watson), data and export tables | [`model_estimates()`](https://skhademioore.github.io/joinpoint/reference/model_estimates.md), [`vcov()`](https://rdrr.io/r/stats/vcov.html), [`model_selection()`](https://skhademioore.github.io/joinpoint/reference/model_selection.md), [`as.data.frame()`](https://rdrr.io/r/base/as.data.frame.html), [`jp_export()`](https://skhademioore.github.io/joinpoint/reference/jp_export.md) |  |
+
+Not covered: Bayesian joinpoint models and joinpoint models for survival
+or complex survey data.
+
+The grid search is written in C++ and evaluates each candidate model
+from cross products only, so permutation tests and empirical quantile
+resampling over thousands of data sets run in seconds.
+
+## Key functions
+
+| Function | Purpose |
+|----|----|
+| [`joinpoint()`](https://skhademioore.github.io/joinpoint/reference/joinpoint.md), [`jp_control()`](https://skhademioore.github.io/joinpoint/reference/jp_control.md) | Fit joinpoint models; search, selection and interval settings |
+| [`apc()`](https://skhademioore.github.io/joinpoint/reference/apc.md), [`aapc()`](https://skhademioore.github.io/joinpoint/reference/apc.md), [`joinpoints()`](https://skhademioore.github.io/joinpoint/reference/apc.md) | Segment APCs, AAPCs and joinpoint locations with confidence intervals |
+| [`model_selection()`](https://skhademioore.github.io/joinpoint/reference/model_selection.md), [`model_estimates()`](https://skhademioore.github.io/joinpoint/reference/model_estimates.md), [`jump_estimates()`](https://skhademioore.github.io/joinpoint/reference/jump_estimates.md) | Selection statistics and tests, coefficients, jump and comparability ratio |
+| [`jp_table()`](https://skhademioore.github.io/joinpoint/reference/jp_table.md) | Publication table of trends |
+| [`coef()`](https://rdrr.io/r/stats/coef.html), [`vcov()`](https://rdrr.io/r/stats/vcov.html), [`fitted()`](https://rdrr.io/r/stats/fitted.values.html), [`residuals()`](https://rdrr.io/r/stats/residuals.html), [`predict()`](https://rdrr.io/r/stats/predict.html), [`as.data.frame()`](https://rdrr.io/r/base/as.data.frame.html) | Standard model methods |
+| [`jp_compare()`](https://skhademioore.github.io/joinpoint/reference/jp_compare.md) | Pairwise tests of parallelism and coincidence, AAPC comparisons |
+| [`jp_cluster()`](https://skhademioore.github.io/joinpoint/reference/jp_cluster.md), [`age_adjust()`](https://skhademioore.github.io/joinpoint/reference/age_adjust.md) | Clustering of contiguous age groups; direct age adjustment |
+| [`jp_export()`](https://skhademioore.github.io/joinpoint/reference/jp_export.md) | Every result table as delimited text |
+| [`autoplot()`](https://ggplot2.tidyverse.org/reference/autoplot.html), [`plot_apc()`](https://skhademioore.github.io/joinpoint/reference/plot_apc.md), [`plot_aapc()`](https://skhademioore.github.io/joinpoint/reference/plot_apc.md), [`plot_models()`](https://skhademioore.github.io/joinpoint/reference/plot_models.md), [`plot_selection()`](https://skhademioore.github.io/joinpoint/reference/plot_selection.md), [`plot_residuals()`](https://skhademioore.github.io/joinpoint/reference/plot_residuals.md) | Figures |
+| [`theme_joinpoint()`](https://skhademioore.github.io/joinpoint/reference/theme_joinpoint.md), [`scale_color_joinpoint()`](https://skhademioore.github.io/joinpoint/reference/theme_joinpoint.md), [`scale_fill_joinpoint()`](https://skhademioore.github.io/joinpoint/reference/theme_joinpoint.md) | Theme and color scales of the figures |
+
+## Validation
+
+The test suite checks the package against published analyses and
+independent computations:
+
+- the 24 models of the joinpoint tutorial of van Doren (2024) on the US
+  mortality data: every joinpoint location, and every published fitted
+  value to its two decimals except eight transcription errors and eight
+  cells inconsistent with their neighbors at the second decimal (each
+  listed in the test); and the selections of its permutation test;
+- the prepregnancy BMI analysis of Khademioore et al. (2026, Table 4):
+  the BIC values, the joinpoint, the slopes, the segment p values and
+  the slope change with its p value; the joinpoint interval is
+  reproduced by the conservative variant of the parametric interval, and
+  the slope intervals are not (they imply more degrees of freedom than
+  the p values);
+- brute force maximum likelihood for Poisson and binomial fits, fine
+  grids for continuous joinpoints, and
+  [`lm()`](https://rdrr.io/r/stats/lm.html) for covariate adjustment.
+
+## Vignettes
+
+Each vignette tells one analysis from question to figure. Read them on
+the [package
+website](https://skhademioore.github.io/joinpoint/articles/), or with
+`vignette(package = "joinpoint")` after installation, in reading order:
+
+*Getting started*
+
+- [`vignette("joinpoint")`](https://skhademioore.github.io/joinpoint/articles/joinpoint.html):
+  a century of United States mortality, from a first fit to a manuscript
+  table
+- [`vignette("published-analysis")`](https://skhademioore.github.io/joinpoint/articles/published-analysis.html):
+  reproducing a published analysis of prepregnancy BMI in Ontario,
+  quantity by quantity
+
+*Methods*
+
+- [`vignette("model-selection")`](https://skhademioore.github.io/joinpoint/articles/model-selection.html):
+  how many joinpoints? The selection rules, the permutation test, and
+  joinpoints too small to matter
+- [`vignette("uncertainty")`](https://skhademioore.github.io/joinpoint/articles/uncertainty.html):
+  how certain is a trend? Error models and parametric versus empirical
+  quantile intervals
+- [`vignette("comparing-groups")`](https://skhademioore.github.io/joinpoint/articles/comparing-groups.html):
+  did two trends move together? Tests of parallelism and coincidence
+- [`vignette("coding-changes")`](https://skhademioore.github.io/joinpoint/articles/coding-changes.html):
+  breaks that are not trends, from outliers to coding changes
+- [`vignette("clustering")`](https://skhademioore.github.io/joinpoint/articles/clustering.html):
+  which age groups share a trend? Age adjustment and clustering
+- [`vignette("extensions")`](https://skhademioore.github.io/joinpoint/articles/extensions.html):
+  counts, seasons and joinpoints between observations
+
+*Graphics*
+
+- [Graphics
+  gallery](https://skhademioore.github.io/joinpoint/articles/graphics-gallery.html)
+  (website only): every figure the package draws, and how to adapt it
+  for a paper, a slide or a report
+
+## References
+
+Besag J, Clifford P (1991). Sequential Monte Carlo p-values.
+*Biometrika* 78:301-304.
+
+Chen HS, Zeichner S, Anderson RN, Espey DK, Kim HJ, Feuer EJ (2020). The
+joinpoint-jump and joinpoint-comparability ratio model for trend
+analysis with applications to coding changes in health statistics.
+*Journal of Official Statistics* 36:49-62.
+
+Clegg LX, Hankey BF, Tiwari R, Feuer EJ, Edwards BK (2009). Estimating
+average annual percent change in trend analysis. *Statistics in
+Medicine* 28:3670-3682.
+
+Czajkowski M, Gill R, Rempala G (2008). Model selection in logistic
+joinpoint regression with applications to analyzing cohort mortality
+patterns. *Statistics in Medicine* 27:1508-1526.
+
+Hudson DJ (1966). Fitting segmented curves whose join points have to be
+estimated. *Journal of the American Statistical Association*
+61:1097-1129.
+
+Khademioore S, Darling EK, D’Souza R, Muraca GM, Guo Y, Anderson LN
+(2026). Prepregnancy body mass index in Ontario from 2012 to 2022: a
+population-based descriptive study. *Canadian Journal of Public Health*.
+
+Kim HJ, Fay MP, Feuer EJ, Midthune DN (2000). Permutation tests for
+joinpoint regression with applications to cancer rates. *Statistics in
+Medicine* 19:335-351.
+
+Kim HJ, Fay MP, Yu B, Barrett MJ, Feuer EJ (2004). Comparability of
+segmented line regression models. *Biometrics* 60:1005-1014.
+
+Kim HJ, Luo J, Chen HS, et al. (2017). Improved confidence interval for
+average annual percent change in trend analysis. *Statistics in
+Medicine* 36:3059-3074.
+
+Kim HJ, Chen HS, Byrne J, Wheeler B, Feuer EJ (2022). Twenty years since
+Joinpoint 1.0: two major enhancements, their justification, and impact.
+*Statistics in Medicine* 41:3102-3130.
+
+Kim HJ, Chen HS, Midthune D, et al. (2023). Data-driven choice of a
+model selection method in joinpoint regression. *Journal of Applied
+Statistics* 50:1992-2013.
+
+Lerman PM (1980). Fitting segmented regression models by grid search.
+*Journal of the Royal Statistical Society, Series C* 29:77-84.
+
+van Doren T (2024). Estimating time points of significant change in
+cause-specific mortality: joinpoint regression in R. *The Denominator*.
+<doi:10.6069/JK1Y-7Z16>
+
+Zhang NR, Siegmund DO (2007). A modified Bayes information criterion
+with applications to the analysis of comparative genomic hybridization
+data. *Biometrics* 63:22-32.
+
+## Citing joinpoint
+
+``` r
+
+citation("joinpoint")
+```
+
+Releases will be archived on [Zenodo](https://zenodo.org/) with a
+citable DOI (the DOI badge appears after the first release). The
+repository ships machine-readable citation and software metadata for
+FAIR harvesters:
+
+- [`CITATION.cff`](https://github.com/skhademioore/joinpoint/blob/main/CITATION.cff):
+  Citation File Format (GitHub “Cite this repository”, Zenodo).
+- [`codemeta.json`](https://github.com/skhademioore/joinpoint/blob/main/codemeta.json):
+  CodeMeta 2.0 software metadata crosswalk.
+- [`.zenodo.json`](https://github.com/skhademioore/joinpoint/blob/main/.zenodo.json):
+  Zenodo deposit metadata (author, ORCID, license, related identifiers).
+- [`ro-crate-metadata.json`](https://github.com/skhademioore/joinpoint/blob/main/ro-crate-metadata.json):
+  RO-Crate 1.1 packaging and provenance.
+- [`inst/CITATION`](https://github.com/skhademioore/joinpoint/blob/main/inst/CITATION):
+  the R-level citation (`citation("joinpoint")`).
+
+All carry the GPL-3.0-or-later SPDX identifier and the author’s ORCID.
+
+## Authors
+
+- [Sahar Khademioore](https://orcid.org/0000-0002-3025-0006) (author,
+  maintainer)
+
+## Acknowledgments
+
+Portions of the package code, documentation, and vignettes were drafted
+and reviewed with the assistance of large language models: Anthropic’s
+Claude Opus 5.5 and Fable 5.1 and OpenAI’s ChatGPT 6 Astra. All
+methodological choices, design decisions, and the final review and
+validation were performed by the author, who takes responsibility for
+the package’s contents.
+
+## License
+
+GPL (\>= 3). See
+[`LICENSE.md`](https://skhademioore.github.io/joinpoint/LICENSE.md) for
+the full license text.
+
+# Package index
+
+## Fit joinpoint models
+
+Fit joinpoint models to one or more trend series, and control the grid
+search, the model selection and the confidence intervals.
+
+- [`joinpoint()`](https://skhademioore.github.io/joinpoint/reference/joinpoint.md)
+  : Fit joinpoint regression models
+- [`jp_control()`](https://skhademioore.github.io/joinpoint/reference/jp_control.md)
+  : Control settings for joinpoint fitting
+
+## Trend estimates
+
+Segment APCs, AAPCs and joinpoint locations with their confidence
+intervals, model selection statistics, regression coefficients and a
+table for a manuscript.
+
+- [`apc()`](https://skhademioore.github.io/joinpoint/reference/apc.md)
+  [`aapc()`](https://skhademioore.github.io/joinpoint/reference/apc.md)
+  [`joinpoints()`](https://skhademioore.github.io/joinpoint/reference/apc.md)
+  : Trend estimates from a joinpoint fit
+- [`jp_table()`](https://skhademioore.github.io/joinpoint/reference/jp_table.md)
+  : Publication table of trends
+- [`model_selection()`](https://skhademioore.github.io/joinpoint/reference/model_selection.md)
+  : Model selection results
+- [`model_estimates()`](https://skhademioore.github.io/joinpoint/reference/model_estimates.md)
+  : Model estimates
+- [`jump_estimates()`](https://skhademioore.github.io/joinpoint/reference/jump_estimates.md)
+  : Jump and comparability ratio estimates
+
+## Model methods
+
+Standard methods for fitted joinpoint models.
+
+- [`as.data.frame(`*`<joinpoint>`*`)`](https://skhademioore.github.io/joinpoint/reference/as.data.frame.joinpoint.md)
+  : Observed and modeled values
+- [`predict(`*`<joinpoint>`*`)`](https://skhademioore.github.io/joinpoint/reference/predict.joinpoint.md)
+  : Predictions from a joinpoint fit
+- [`vcov(`*`<joinpoint>`*`)`](https://skhademioore.github.io/joinpoint/reference/vcov.joinpoint.md)
+  : Covariance of the segment parameters
+
+## Comparing and clustering trends
+
+Tests of parallelism and coincidence, direct age adjustment and
+clustering of contiguous age groups.
+
+- [`jp_compare()`](https://skhademioore.github.io/joinpoint/reference/jp_compare.md)
+  : Pairwise comparison of joinpoint trends
+- [`age_adjust()`](https://skhademioore.github.io/joinpoint/reference/age_adjust.md)
+  : Directly age adjusted rates
+- [`jp_cluster()`](https://skhademioore.github.io/joinpoint/reference/jp_cluster.md)
+  : Multi-group clustering of age specific trends
+
+## Graphics
+
+Publication quality figures built with ggplot2.
+
+- [`autoplot(`*`<joinpoint>`*`)`](https://skhademioore.github.io/joinpoint/reference/autoplot.joinpoint.md)
+  [`plot(`*`<joinpoint>`*`)`](https://skhademioore.github.io/joinpoint/reference/autoplot.joinpoint.md)
+  : Plot a joinpoint fit
+- [`plot_apc()`](https://skhademioore.github.io/joinpoint/reference/plot_apc.md)
+  [`plot_aapc()`](https://skhademioore.github.io/joinpoint/reference/plot_apc.md)
+  : Plot segment APCs and AAPCs
+- [`plot_models()`](https://skhademioore.github.io/joinpoint/reference/plot_models.md)
+  : Plot all fitted models
+- [`plot_selection()`](https://skhademioore.github.io/joinpoint/reference/plot_selection.md)
+  : Plot model selection
+- [`plot_residuals()`](https://skhademioore.github.io/joinpoint/reference/plot_residuals.md)
+  : Residual diagnostics
+- [`autoplot(`*`<jp_comparison>`*`)`](https://skhademioore.github.io/joinpoint/reference/autoplot.jp_comparison.md)
+  : Plot a pairwise comparison
+- [`theme_joinpoint()`](https://skhademioore.github.io/joinpoint/reference/theme_joinpoint.md)
+  [`scale_color_joinpoint()`](https://skhademioore.github.io/joinpoint/reference/theme_joinpoint.md)
+  [`scale_fill_joinpoint()`](https://skhademioore.github.io/joinpoint/reference/theme_joinpoint.md)
+  : Theme and color scales for joinpoint graphics
+
+## Export
+
+- [`jp_export()`](https://skhademioore.github.io/joinpoint/reference/jp_export.md)
+  : Export joinpoint results
+
+## Data sets
+
+- [`us_mortality`](https://skhademioore.github.io/joinpoint/reference/us_mortality.md)
+  : Age adjusted death rates for six causes, United States 1900 to 1998
+- [`ontario_bmi`](https://skhademioore.github.io/joinpoint/reference/ontario_bmi.md)
+  : Prepregnancy body mass index in Ontario, 2012 to 2021
+- [`std_populations`](https://skhademioore.github.io/joinpoint/reference/std_populations.md)
+  : Standard populations for age adjustment
+
+# Articles
+
+### Get started
+
+A complete analysis from a first fit to a manuscript table and figure.
+
+- [Getting started: a century of United States
+  mortality](https://skhademioore.github.io/joinpoint/articles/joinpoint.md):
+- [Reproducing a published analysis: prepregnancy BMI in
+  Ontario](https://skhademioore.github.io/joinpoint/articles/published-analysis.md):
+
+### Methods
+
+How the number of joinpoints is chosen, how certain a trend is, and the
+extensions of the classical model.
+
+- [How many joinpoints? Model
+  selection](https://skhademioore.github.io/joinpoint/articles/model-selection.md):
+- [How certain is a trend? Error models and confidence
+  intervals](https://skhademioore.github.io/joinpoint/articles/uncertainty.md):
+- [Did two trends move together? Comparing
+  groups](https://skhademioore.github.io/joinpoint/articles/comparing-groups.md):
+- [Breaks that are not trends: outliers and coding
+  changes](https://skhademioore.github.io/joinpoint/articles/coding-changes.md):
+- [Which age groups share a trend? Age adjustment and
+  clustering](https://skhademioore.github.io/joinpoint/articles/clustering.md):
+- [Counts, seasons and joinpoints between
+  observations](https://skhademioore.github.io/joinpoint/articles/extensions.md):
+
+### Graphics
+
+Every figure the package draws, and how to adapt it.
+
+- [Graphics
+  gallery](https://skhademioore.github.io/joinpoint/articles/graphics-gallery.md):
+
+  Every figure the package draws, and how to adapt it for a paper, a
+  slide or a report.

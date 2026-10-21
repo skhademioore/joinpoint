@@ -1,0 +1,459 @@
+# Graphics gallery
+
+[`autoplot()`](https://ggplot2.tidyverse.org/reference/autoplot.html)
+and the `plot_*()` functions return ggplot objects. The figures are
+ready for a manuscript as they are, and anything about them can be
+changed with the usual ggplot2 grammar: add labels, scales, themes or
+layers with `+`. This gallery shows each figure once, then the changes
+most often needed before a figure goes into a paper or onto a slide.
+
+The examples use three fits: tuberculosis mortality with empirical
+quantile intervals (the default), all six causes of death in
+`us_mortality`, and the prevalence of each body mass index category in
+`ontario_bmi`.
+
+``` r
+
+library(joinpoint)
+library(ggplot2)
+
+tb <- subset(us_mortality, cause == "Tuberculosis")
+fit_tb <- joinpoint(tb, year, rate, kmax = 3)
+
+fit_all <- joinpoint(us_mortality, year, rate, by = "cause", kmax = 3,
+                     ci_method = "parametric",
+                     control = jp_control(aapc_last = 10))
+
+fit_bmi <- joinpoint(ontario_bmi, year, count = count, population = births,
+                     by = "category", type = "percent", kmax = 2,
+                     method = "bic", ci_method = "parametric")
+```
+
+## Trend figures
+
+[`autoplot()`](https://ggplot2.tidyverse.org/reference/autoplot.html)
+draws the observed values, the fitted model, the joinpoints and the APC
+of each segment.
+[`plot()`](https://rdrr.io/r/graphics/plot.default.html) prints the same
+figure and returns the fit, so use
+[`autoplot()`](https://ggplot2.tidyverse.org/reference/autoplot.html) to
+modify a figure.
+
+### The default figure
+
+The labels sit next to their segments and avoid each other and the
+fitted curves. An asterisk marks an APC that differs significantly from
+zero. The shaded band is the pointwise 95% interval of the fitted curve;
+it is drawn when the fit has empirical quantile intervals.
+
+``` r
+
+autoplot(fit_tb)
+```
+
+![Tuberculosis death rate by year, 1900 to 1998, falling throughout,
+with the fitted joinpoint model, three joinpoints and the APC of each of
+the four segments.](graphics-gallery_files/figure-html/default-1.png)
+
+### Uncertainty on the figure
+
+`labels = "ci"` writes the confidence interval under each APC, and
+`joinpoint_ci = TRUE` shades the confidence interval of each joinpoint
+location. Where a two-line label cannot be placed without overlapping
+another label or a curve, it may be cut to the APC alone.
+
+``` r
+
+autoplot(fit_tb, labels = "ci", joinpoint_ci = TRUE)
+```
+
+![The tuberculosis figure with the confidence interval of each APC
+written under its label and gray bands showing the confidence intervals
+of the three joinpoint
+locations.](graphics-gallery_files/figure-html/uncertainty-1.png)
+
+### Trend direction and a logarithmic axis
+
+`color_by = "trend"` colors each segment by its direction: significantly
+increasing, significantly decreasing or stable. On a logarithmic axis
+(`log_y = TRUE`) equal percent changes have equal slopes, which suits
+log-linear models. Several cohorts are drawn as panels, each with its
+own scale; `ncol` sets the number of columns.
+
+``` r
+
+autoplot(fit_all, color_by = "trend", log_y = TRUE, ncol = 3)
+```
+
+![Six panels, one per cause of death, on logarithmic axes, with segments
+colored by whether the trend increased, decreased or was
+stable.](graphics-gallery_files/figure-html/trend-1.png)
+
+### Several series in one panel
+
+`layout = "overlay"` draws the cohorts in one panel, and `cohorts` picks
+some of them by position. With `aapc = TRUE` each legend entry carries
+the average annual percent change of the first AAPC range, the full
+range by default. Segment labels are off by default when series are
+overlaid, to keep the panel readable.
+
+``` r
+
+levels(us_mortality$cause)
+#> [1] "Accidents"               "Cancer"                 
+#> [3] "Heart Disease"           "Influenza and Pneumonia"
+#> [5] "Stroke"                  "Tuberculosis"
+autoplot(fit_all, layout = "overlay", cohorts = c(2, 3, 5), aapc = TRUE,
+         log_y = TRUE)
+```
+
+![Death rates from heart disease, cancer and stroke in one panel on a
+logarithmic axis, with each legend entry giving the cause and its
+average annual percent
+change.](graphics-gallery_files/figure-html/overlay-1.png)
+
+### Observed values with confidence intervals
+
+When the data carry standard errors, given with `se` or calculated from
+`count` and `population`, `error_bars = TRUE` adds the 95% interval of
+each observed value.
+
+``` r
+
+autoplot(fit_bmi, error_bars = TRUE, ncol = 3) +
+  labs(x = "Fiscal year (start)", y = "Prevalence (%)")
+```
+
+![Six panels showing the yearly prevalence of each body mass index
+category in Ontario with 95% error bars and the fitted joinpoint
+models.](graphics-gallery_files/figure-html/error-bars-1.png)
+
+### A model other than the selected one
+
+`model` draws the best fitting model with a given number of joinpoints
+instead of the selected one, for example to show a reviewer the simpler
+alternative.
+
+``` r
+
+autoplot(fit_tb, model = 1)
+```
+
+![The tuberculosis series with the best fitting model with one
+joinpoint.](graphics-gallery_files/figure-html/other-model-1.png)
+
+## Trend summaries
+
+### APCs over time
+
+[`plot_apc()`](https://skhademioore.github.io/joinpoint/reference/plot_apc.md)
+draws the APC of every segment as a step over the years it covers, with
+its confidence interval as a band and a reference line at zero. It
+answers “how fast, and when” more directly than the data.
+
+``` r
+
+plot_apc(fit_all, ncol = 3)
+```
+
+![Six panels showing the annual percent change of each segment as a
+horizontal step over the years it covers, with confidence bands and a
+dashed line at zero.](graphics-gallery_files/figure-html/apc-1.png)
+
+### AAPC forest plot
+
+[`plot_aapc()`](https://skhademioore.github.io/joinpoint/reference/plot_apc.md)
+compares average annual percent changes across cohorts and ranges. The
+fit requested the last ten years in addition to the full range through
+`jp_control(aapc_last = 10)`; custom ranges are set with `aapc_ranges`.
+
+``` r
+
+plot_aapc(fit_all)
+```
+
+![Forest plot of the average annual percent change of each cause of
+death over the full range and over the last ten years, with confidence
+intervals.](graphics-gallery_files/figure-html/aapc-1.png)
+
+## Model selection and diagnostics
+
+### All candidate models
+
+[`plot_models()`](https://skhademioore.github.io/joinpoint/reference/plot_models.md)
+shows the best fit for every number of joinpoints of one cohort, with
+the selection statistic of each in its panel title and the selected
+model highlighted. `overlay = TRUE` draws them in one panel.
+
+``` r
+
+plot_models(fit_tb, ncol = 2)
+```
+
+![Four small panels showing the best tuberculosis models with zero to
+three joinpoints, each titled with its selection
+statistic.](graphics-gallery_files/figure-html/models-1.png)
+
+``` r
+
+plot_models(fit_tb, overlay = TRUE)
+```
+
+![The four candidate tuberculosis models drawn over the data in one
+panel, with the selected model
+highlighted.](graphics-gallery_files/figure-html/models-overlay-1.png)
+
+### Selection criteria
+
+[`plot_selection()`](https://skhademioore.github.io/joinpoint/reference/plot_selection.md)
+draws the selection statistic against the number of joinpoints. For the
+permutation test it draws the sequence of tests instead;
+[`vignette("model-selection")`](https://skhademioore.github.io/joinpoint/articles/model-selection.md)
+has an example.
+
+``` r
+
+plot_selection(fit_tb)
+```
+
+![The weighted BIC of the tuberculosis models with zero to three
+joinpoints.](graphics-gallery_files/figure-html/selection-1.png)
+
+### Residuals
+
+[`plot_residuals()`](https://skhademioore.github.io/joinpoint/reference/plot_residuals.md)
+shows the standardized residuals of the selected model against time, as
+a normal quantile plot, or as an autocorrelation function.
+[`vignette("uncertainty")`](https://skhademioore.github.io/joinpoint/articles/uncertainty.md)
+discusses what to do when neighboring residuals are correlated.
+
+``` r
+
+plot_residuals(fit_tb)
+```
+
+![Standardized residuals of the tuberculosis model plotted against
+year.](graphics-gallery_files/figure-html/residuals-1.png)
+
+``` r
+
+plot_residuals(fit_tb, type = "qq")
+```
+
+![Normal quantile plot of the standardized residuals of the tuberculosis
+model.](graphics-gallery_files/figure-html/residuals-qq-1.png)
+
+``` r
+
+plot_residuals(fit_tb, type = "acf")
+```
+
+![Autocorrelation function of the standardized residuals of the
+tuberculosis
+model.](graphics-gallery_files/figure-html/residuals-acf-1.png)
+
+## Comparing groups
+
+[`autoplot()`](https://ggplot2.tidyverse.org/reference/autoplot.html) of
+a
+[`jp_compare()`](https://skhademioore.github.io/joinpoint/reference/jp_compare.md)
+result draws the separately fitted models (solid) and the model fitted
+under the null hypothesis (dashed), one panel per pair.
+[`vignette("comparing-groups")`](https://skhademioore.github.io/joinpoint/articles/comparing-groups.md)
+explains the tests.
+
+``` r
+
+pair <- joinpoint(subset(us_mortality, cause %in% c("Stroke", "Heart Disease")),
+                  year, rate, by = "cause", kmax = 2, ci_method = "parametric")
+autoplot(jp_compare(pair, n_perm = 99), log_y = TRUE)
+```
+
+![Stroke and heart disease death rates with their separately fitted
+joinpoint models as solid lines and the jointly fitted parallel model as
+dashed lines.](graphics-gallery_files/figure-html/compare-1.png)
+
+## Customizing the figures
+
+### Titles, axis labels and captions
+
+[`labs()`](https://ggplot2.tidyverse.org/reference/labs.html) replaces
+the automatic labels and adds a title and subtitle. A caption given here
+replaces the automatic note that explains the labels, band and error
+bars. [`expression()`](https://rdrr.io/r/base/expression.html) writes
+units with superscripts, as in
+`y = expression("Mean BMI (kg/m"^2 * ")")`.
+
+``` r
+
+autoplot(fit_tb) +
+  labs(title = "Tuberculosis mortality fell throughout the century",
+       subtitle = "The decline was steepest from 1947, when streptomycin came into use",
+       x = NULL, y = "Deaths per 100,000 (age adjusted)",
+       caption = "Source: CDC National Vital Statistics System, HIST293.")
+```
+
+![The tuberculosis figure with a title, a subtitle, a source caption and
+custom axis labels.](graphics-gallery_files/figure-html/labels-1.png)
+
+### Axes
+
+The x axis is free to change. Breaks every twenty years, for example:
+
+``` r
+
+autoplot(fit_tb) +
+  scale_x_continuous(breaks = seq(1900, 2000, by = 20))
+```
+
+![The tuberculosis figure with x axis breaks every twenty
+years.](graphics-gallery_files/figure-html/x-axis-1.png)
+
+[`autoplot()`](https://ggplot2.tidyverse.org/reference/autoplot.html)
+sets the y scale itself, with room around the curves for the segment
+labels, and ggplot2 notes when that scale is replaced. To change the y
+axis, keep the room by passing the expansion
+[`autoplot()`](https://ggplot2.tidyverse.org/reference/autoplot.html)
+uses: `mult = 0.12` with APC labels (the default), `0.2` with
+`labels = "ci"` and `0.05` without labels.
+
+``` r
+
+autoplot(fit_bmi, cohorts = 6) +
+  scale_y_continuous(labels = function(v) paste0(v, "%"),
+                     expand = expansion(mult = 0.12)) +
+  labs(x = "Fiscal year (start)", y = "Prevalence")
+```
+
+![The body mass index figure for obesity class III with y axis labels
+formatted as
+percentages.](graphics-gallery_files/figure-html/y-axis-1.png)
+
+### Text size and fonts
+
+[`theme_joinpoint()`](https://skhademioore.github.io/joinpoint/reference/theme_joinpoint.md)
+is the theme of every figure. Add it again with a larger `base_size` for
+slides or a smaller one for a narrow journal column, and set
+`base_family` to a font installed on your system.
+
+``` r
+
+autoplot(fit_tb) + theme_joinpoint(base_size = 16)
+```
+
+![The tuberculosis figure with larger text for a
+slide.](graphics-gallery_files/figure-html/slides-1.png)
+
+Any complete ggplot2 theme works too, followed by
+[`theme()`](https://ggplot2.tidyverse.org/reference/theme.html) for
+details:
+
+``` r
+
+autoplot(fit_tb) +
+  theme_classic(base_size = 12) +
+  theme(plot.title.position = "plot")
+```
+
+![The tuberculosis figure drawn with the ggplot2 classic
+theme.](graphics-gallery_files/figure-html/other-theme-1.png)
+
+### Colors
+
+The qualitative palette of
+[`scale_color_joinpoint()`](https://skhademioore.github.io/joinpoint/reference/theme_joinpoint.md)
+has eight colors, ordered so that neighboring colors stay
+distinguishable under the common forms of color vision deficiency. Use
+it in any ggplot2 figure, together with
+[`theme_joinpoint()`](https://skhademioore.github.io/joinpoint/reference/theme_joinpoint.md),
+to give your own figures the same look:
+
+``` r
+
+ggplot(us_mortality, aes(year, rate, color = cause)) +
+  geom_line(linewidth = 0.7) +
+  scale_y_log10() +
+  scale_color_joinpoint(name = NULL) +
+  theme_joinpoint() +
+  labs(x = NULL, y = "Deaths per 100,000")
+```
+
+![Death rates of the six causes drawn as lines in the joinpoint palette
+and theme.](graphics-gallery_files/figure-html/palette-1.png)
+
+To use other colors in a figure colored by cohort, replace the scale for
+both the color and the fill aesthetics, since the fitted bands are
+filled in the color of their cohort:
+
+``` r
+
+autoplot(fit_all, layout = "overlay", cohorts = c(2, 3, 5), log_y = TRUE) +
+  scale_color_manual(values = c("#0B2540", "#2A78D6", "#7F8FA6"),
+                     aesthetics = c("colour", "fill"), name = NULL)
+```
+
+![Heart disease, cancer and stroke death rates in one panel drawn in
+custom colors.](graphics-gallery_files/figure-html/manual-colors-1.png)
+
+### Figures built from the result tables
+
+Every result is also a data frame, so any figure can be drawn from
+scratch. [`as.data.frame()`](https://rdrr.io/r/base/as.data.frame.html)
+returns the observed and modeled values with the segment and APC of each
+point,
+[`joinpoints()`](https://skhademioore.github.io/joinpoint/reference/apc.md)
+the joinpoint locations with their intervals, and
+[`apc()`](https://skhademioore.github.io/joinpoint/reference/apc.md) the
+segment estimates. Here, the periods between joinpoints are shaded and
+annotated with their APCs. The shaded rectangles reach beyond the data
+and
+[`coord_cartesian()`](https://ggplot2.tidyverse.org/reference/coord_cartesian.html)
+crops them to the panel, which works on a logarithmic axis too:
+
+``` r
+
+pts <- as.data.frame(fit_tb)
+seg <- apc(fit_tb)
+seg$label <- sprintf("%.1f%%", seg$estimate)
+lim <- range(pts$observed, pts$modeled)
+
+ggplot(pts, aes(x)) +
+  geom_rect(data = seg, aes(xmin = start, xmax = end, ymin = lim[1] / 10,
+                            ymax = lim[2] * 10, fill = factor(segment %% 2)),
+            inherit.aes = FALSE, alpha = 0.25, show.legend = FALSE) +
+  geom_point(aes(y = observed), color = "#7F8FA6", size = 1.2) +
+  geom_line(aes(y = modeled), color = "#2A78D6", linewidth = 1) +
+  geom_text(data = seg, aes(x = (start + end) / 2, y = Inf, label = label),
+            vjust = 1.5, size = 3.5, inherit.aes = FALSE) +
+  scale_fill_manual(values = c("white", "#DCE8F7")) +
+  scale_y_log10() +
+  coord_cartesian(ylim = lim) +
+  theme_joinpoint() +
+  labs(x = NULL, y = "Deaths per 100,000")
+```
+
+![A custom figure of tuberculosis mortality on a logarithmic axis with
+each period between joinpoints shaded, the fitted line, and the APC of
+each period written at the
+top.](graphics-gallery_files/figure-html/custom-1.png)
+
+## Saving figures
+
+[`ggsave()`](https://ggplot2.tidyverse.org/reference/ggsave.html) writes
+a figure at the size it will be printed. Journals usually ask for widths
+of about 85 mm (one column) or 175 mm (two columns), at least 300 dpi
+for raster images, or a vector format such as PDF. Choose the size first
+and set `base_size` to fit it, rather than scaling a large figure down,
+so the text ends up at the intended size.
+
+``` r
+
+p <- autoplot(fit_tb) + theme_joinpoint(base_size = 9)
+ggsave("tuberculosis.pdf", p, width = 85, height = 60, units = "mm")
+ggsave("tuberculosis.png", p, width = 85, height = 60, units = "mm",
+       dpi = 600, bg = "white")
+```
+
+Add alternative text to figures that are published online. In R Markdown
+and Quarto documents, the `fig.alt` chunk option sets it, as on this
+page.
