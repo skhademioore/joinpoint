@@ -64,8 +64,10 @@ jp_glm_family <- function(family) {
 }
 
 # Exhaustive search for k joinpoints: the deviance of every admissible set.
-# The profile holds the smallest deviance with each joinpoint at each
-# candidate.
+# Sets whose design is rank deficient (a hinge equal to a covariate, for
+# example) do not identify the model and are left out, whatever their
+# deviance; NULL when no set is left. The profile holds the smallest
+# deviance with each joinpoint at each candidate.
 jp_glm_search <- function(x, gd, family, cand, cons, k, extra = NULL) {
   cf <- jp_configs(cons, k)
   if (!ncol(cf)) {
@@ -76,10 +78,14 @@ jp_glm_search <- function(x, gd, family, cand, cons, k, extra = NULL) {
   base <- cbind(1, u, extra)
   H <- outer(u, cand - mean(x), function(a, b) pmax(a - b, 0))
   dev <- vapply(seq_len(ncol(cf)), function(i) {
-    suppressWarnings(stats::glm.fit(cbind(base, H[, cf[, i], drop = FALSE]),
-                                    gd$y, weights = gd$w, offset = gd$off,
-                                    family = fam)$deviance)
+    X <- cbind(base, H[, cf[, i], drop = FALSE])
+    ft <- suppressWarnings(stats::glm.fit(X, gd$y, weights = gd$w,
+                                          offset = gd$off, family = fam))
+    if (ft$rank < ncol(X)) Inf else ft$deviance
   }, numeric(1))
+  if (!any(is.finite(dev))) {
+    return(NULL)
+  }
   ft <- jp_glm_fit(x, gd, family, cand[cf[, which.min(dev)]], extra)
   ft$profile <- jp_config_profile(dev, cf, length(cand))
   ft
@@ -134,6 +140,12 @@ jp_glm_models <- function(x, gd, family, cand, cons, kmin, kmax, extra,
     jp_glm_search(x, gd, family, cand, cons, k, extra)
   })
   ok <- !vapply(fits, is.null, logical(1))
+  if (!any(ok)) {
+    stop("No identifiable model with ", kmin, " to ", kmax, " joinpoints: ",
+         "every placement gives a rank deficient design (are covariates ",
+         "linearly dependent on the joinpoint terms?). Lower `kmin`.",
+         call. = FALSE)
+  }
   fits <- fits[ok]
   ks <- (kmin:kmax)[ok]
   bad <- ks[!vapply(fits, `[[`, logical(1), "ok")]
@@ -147,7 +159,12 @@ jp_glm_models <- function(x, gd, family, cand, cons, kmin, kmax, extra,
   last <- fits[[length(fits)]]
   # Pearson dispersion of the largest model; its degrees of freedom also
   # count the estimated joinpoint locations.
-  pearson <- last$pearson / (length(x) - ncol(last$X) - max(ks))
+  df <- length(x) - ncol(last$X) - max(ks)
+  if (overdispersion && df <= 0) {
+    stop("The dispersion cannot be estimated: the largest model leaves no ",
+         "residual degrees of freedom. Lower `kmax`.", call. = FALSE)
+  }
+  pearson <- if (df > 0) last$pearson / df else NA_real_
   phi <- if (overdispersion) max(1, pearson) else 1
   models <- lapply(fits, jp_glm_model, x = x, family = family, phi = phi,
                    jump = jump)

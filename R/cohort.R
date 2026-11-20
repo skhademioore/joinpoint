@@ -95,7 +95,7 @@ jp_fit_cohort <- function(d, spec, cohort_index = 1L) {
     gd <- jp_glm_data(inc, spec$family, spec$rate_per)
     models <- jp_glm_models(x, gd, spec$family, cand, cons, kmin, kmax, extra,
                             model_jump, spec$overdispersion)
-    if (!spec$overdispersion && attr(models, "pearson") > 1.5) {
+    if (!spec$overdispersion && isTRUE(attr(models, "pearson") > 1.5)) {
       notes <- c(notes, sprintf(paste(
         "the Pearson dispersion of the largest model is %.2f; consider",
         "overdispersion = TRUE."), attr(models, "pearson")))
