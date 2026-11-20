@@ -76,10 +76,17 @@ reference:
   - plot_residuals
   - autoplot.jp_comparison
   - theme_joinpoint
+  - jp_interactive
 
-- title: Export
+- title: Export and reports
+  desc: >
+    Tables, figures and interactive graphics saved for manuscripts, reports
+    and web pages, complete reports, and R Markdown and Quarto output.
   contents:
+  - jp_save
+  - jp_report
   - jp_export
+  - knit_print.joinpoint
 
 - title: Data sets
   contents:
@@ -94,6 +101,7 @@ articles:
   contents:
   - joinpoint
   - published-analysis
+  - reports
 
 - title: Methods
   navbar: Methods

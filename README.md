@@ -17,7 +17,9 @@
 analysis (Kim et al. 2000). It finds the points in time at which a trend
 changes, summarizes each period by its annual percent change (APC), fixed
 periods by the average annual percent change (AAPC), and draws publication
-quality figures with ggplot2.
+quality figures with ggplot2, static or interactive. Tables, figures and
+complete reports are saved for manuscripts in Word, LaTeX, PDF, HTML,
+R Markdown and Quarto.
 
 It covers the classical least squares joinpoint model with its error models,
 model selection rules and confidence intervals, together with the extensions
@@ -61,6 +63,11 @@ jp_table(fit)            # formatted table for a manuscript
 autoplot(fit, color_by = "trend", log_y = TRUE)
 plot_apc(fit)
 plot_aapc(fit)
+jp_interactive(fit)      # interactive figure with tooltips and zoom
+
+jp_save(jp_table(fit), "trends.docx")      # Word table (also .tex, .md, .csv, ...)
+jp_save(autoplot(fit), "trends.png")       # figure (also .pdf, .svg, .tex, ...)
+jp_report(fit, "report.qmd")               # Quarto report (also .Rmd, .html, .docx, .pdf)
 ```
 
 ## What is covered
@@ -89,6 +96,8 @@ plot_aapc(fit)
 | Pairwise tests of parallelism and coincidence, AAPC comparison, multiplicity adjustment | `jp_compare()` | Kim et al. (2004) |
 | Multi-group clustering of age groups | `jp_cluster()` | |
 | Model estimates, covariance, goodness of fit (R squared, Durbin-Watson), data and export tables | `model_estimates()`, `vcov()`, `model_selection()`, `as.data.frame()`, `jp_export()` | |
+| Interactive graphics with tooltips, linked highlighting and zoom | `jp_interactive()`, `interactive = TRUE` | |
+| Tables, figures and reports for Word, LaTeX, PDF, HTML, R Markdown and Quarto | `jp_save()`, `jp_report()` | |
 
 Not covered: Bayesian joinpoint models and joinpoint models for survival or
 complex survey data.
@@ -108,8 +117,10 @@ resampling over thousands of data sets run in seconds.
 | `coef()`, `vcov()`, `fitted()`, `residuals()`, `predict()`, `as.data.frame()` | Standard model methods |
 | `jp_compare()` | Pairwise tests of parallelism and coincidence, AAPC comparisons |
 | `jp_cluster()`, `age_adjust()` | Clustering of contiguous age groups; direct age adjustment |
+| `jp_save()`, `jp_report()` | Tables, figures and complete reports in document formats |
 | `jp_export()` | Every result table as delimited text |
 | `autoplot()`, `plot_apc()`, `plot_aapc()`, `plot_models()`, `plot_selection()`, `plot_residuals()` | Figures |
+| `jp_interactive()` | Interactive figures |
 | `theme_joinpoint()`, `scale_color_joinpoint()`, `scale_fill_joinpoint()` | Theme and color scales of the figures |
 
 ## Validation
@@ -142,7 +153,10 @@ with `vignette(package = "joinpoint")` after installation, in reading order:
   table
 - [`vignette("published-analysis")`](https://skhademioore.github.io/joinpoint/articles/published-analysis.html):
   reproducing a published analysis of prepregnancy BMI in Ontario, quantity
-  by quantity
+  by quantity, with interactive figures
+- [`vignette("reports")`](https://skhademioore.github.io/joinpoint/articles/reports.html):
+  sharing results: tables, figures and reports for Word, LaTeX, PDF, R
+  Markdown and Quarto, and interactive graphics
 
 *Methods*
 

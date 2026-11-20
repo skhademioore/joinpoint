@@ -142,7 +142,8 @@ jp_plot_data <- function(object, model, cohorts = NULL, digits = 1,
     mid <- (a$start + a$end) / 2
     list(
       points = data.frame(cohort = labs[i], x = f$data$x, y = f$data$r,
-                          se = f$data$se, included = f$data$included),
+                          se = f$data$se, included = f$data$included,
+                          fit = jp_fitted_at(f, m, f$data$x)),
       curve = data.frame(cohort = labs[i], jp_curve(f, m, band)),
       joinpoints = if (m$k) {
         data.frame(cohort = labs[i], x = m$tau, y = jp_fitted_at(f, m, m$tau),
@@ -151,7 +152,7 @@ jp_plot_data <- function(object, model, cohorts = NULL, digits = 1,
       segments = data.frame(
         cohort = labs[i], segment = a$segment, start = a$start, end = a$end,
         x = mid, y = jp_fitted_at(f, m, mid), estimate = a$estimate,
-        lower = a$lower, upper = a$upper,
+        lower = a$lower, upper = a$upper, p_value = a$p_value,
         trend = jp_trend(a$estimate, a$p_value, alpha),
         label = paste0(jp_fmt(a$estimate, digits),
                        ifelse(a$significant, "*", ""))
@@ -209,6 +210,9 @@ jp_plot_data <- function(object, model, cohorts = NULL, digits = 1,
 #' @param digits Decimals of the segment labels (default 1 for APCs and 3
 #'   for slopes of linear models).
 #' @param ncol Number of facet columns.
+#' @param interactive Draw the layers with the interactive versions of the
+#'   `ggiraph` package (tooltips and linked highlighting); show the result
+#'   with [jp_interactive()].
 #' @param ... Ignored.
 #' @return A ggplot object.
 #' @importFrom ggplot2 autoplot
@@ -224,13 +228,18 @@ autoplot.joinpoint <- function(object, model = "final",
                                cohorts = NULL, labels = NULL, aapc = FALSE,
                                band = TRUE, joinpoint_ci = FALSE,
                                error_bars = FALSE, log_y = FALSE,
-                               digits = NULL, ncol = NULL, ...) {
+                               digits = NULL, ncol = NULL,
+                               interactive = FALSE, ...) {
   color_by <- match.arg(color_by)
   layout <- match.arg(layout)
+  ia <- isTRUE(interactive)
+  if (ia) jp_need("ggiraph", "interactive graphics")
+  geom <- function(name) jp_geom(name, ia)
   s <- object$settings
   nm <- jp_stat_names(s$interval, s$log, s$family)
   if (is.null(digits)) digits <- if (s$log) 1L else 3L
   pd <- jp_plot_data(object, model, cohorts, digits, band)
+  if (ia) pd <- jp_trend_tips(pd, nm, digits, s)
   overlay <- layout == "overlay"
   single <- nlevels(pd$points$cohort) == 1L
   colored <- overlay && !single
@@ -290,8 +299,9 @@ autoplot.joinpoint <- function(object, model = "final",
   }
   pts <- key(pd$points, "Observed")
 
-  g <- ggplot2::ggplot(mapping = ggplot2::aes(x = .data$x, y = .data$y,
-                                              color = .data$key))
+  g <- ggplot2::ggplot(mapping = jp_ia_aes(
+    ggplot2::aes(x = .data$x, y = .data$y, color = .data$key), ia
+  ))
   if (joinpoint_ci && !is.null(pd$joinpoints)) {
     g <- g + ggplot2::geom_rect(
       data = pd$joinpoints[!is.na(pd$joinpoints$lower), ], inherit.aes = FALSE,
@@ -309,7 +319,7 @@ autoplot.joinpoint <- function(object, model = "final",
                          color = jp_ink[["secondary"]], inherit.aes = FALSE)
   }
   if (band && any(!is.na(curve$lower))) {
-    g <- g + ggplot2::geom_ribbon(
+    g <- g + geom("geom_ribbon")(
       data = curve, ggplot2::aes(ymin = .data$lower, ymax = .data$upper,
                                  y = NULL, fill = .data$key,
                                  group = interaction(.data$cohort, .data$piece)),
@@ -317,7 +327,7 @@ autoplot.joinpoint <- function(object, model = "final",
     )
   }
   if (error_bars && any(!is.na(pts$se))) {
-    g <- g + ggplot2::geom_errorbar(
+    g <- g + geom("geom_errorbar")(
       data = pts[!is.na(pts$se), ],
       ggplot2::aes(ymin = .data$y - 1.96 * .data$se,
                    ymax = .data$y + 1.96 * .data$se),
@@ -325,11 +335,11 @@ autoplot.joinpoint <- function(object, model = "final",
     )
   }
   g <- g +
-    ggplot2::geom_point(data = pts[pts$included, ], shape = 16, size = 1.6,
-                        alpha = 0.55, show.legend = FALSE) +
-    ggplot2::geom_point(data = pts[!pts$included, ], shape = 1, size = 1.9,
-                        stroke = 0.6, show.legend = FALSE) +
-    ggplot2::geom_line(data = curve, ggplot2::aes(y = .data$fit,
+    geom("geom_point")(data = pts[pts$included, ], shape = 16, size = 1.6,
+                       alpha = 0.55, show.legend = FALSE) +
+    geom("geom_point")(data = pts[!pts$included, ], shape = 1, size = 1.9,
+                       stroke = 0.6, show.legend = FALSE) +
+    geom("geom_line")(data = curve, ggplot2::aes(y = .data$fit,
                                                   group = interaction(.data$cohort, .data$piece)),
                        linewidth = 0.9, lineend = "round")
   pad <- if (labels == "none") 0.05 else if (labels == "ci") 0.2 else 0.12
@@ -372,7 +382,7 @@ autoplot.joinpoint <- function(object, model = "final",
                       cw = 1.1 * 0.065 * nc / 6.9,
                       lh = (1 + 2 * pad) * 0.14 * ceiling(np / nc) / 3.8)
     }))
-    if (!is.null(sg)) g <- g + ggplot2::geom_label(
+    if (!is.null(sg)) g <- g + geom("geom_label")(
       data = sg, ggplot2::aes(y = .data$label_y, label = .data$label,
                               hjust = .data$hjust, vjust = .data$vjust),
       color = jp_ink[["secondary"]], size = 3,
@@ -382,9 +392,9 @@ autoplot.joinpoint <- function(object, model = "final",
   }
   # Joinpoint markers are drawn last so that no label hides them.
   if (!is.null(pd$joinpoints)) {
-    g <- g + ggplot2::geom_point(data = key(pd$joinpoints, "Joinpoint"),
-                                 shape = 21, size = 2.2, stroke = 0.8,
-                                 fill = "white", show.legend = FALSE)
+    g <- g + geom("geom_point")(data = key(pd$joinpoints, "Joinpoint"),
+                                shape = 21, size = 2.2, stroke = 0.8,
+                                fill = "white", show.legend = FALSE)
   }
   roles <- c(Observed = jp_ink[["secondary"]], Fitted = jp_pal[1L],
              Joinpoint = jp_ink[["primary"]])
@@ -593,6 +603,8 @@ plot_models <- function(object, cohort = 1L, overlay = FALSE, ncol = NULL) {
 #' @param object A `joinpoint` object.
 #' @param model `"final"` or a number of joinpoints.
 #' @param ncol Number of facet columns.
+#' @param interactive Draw interactive `ggiraph` layers (tooltips and linked
+#'   highlighting); show the result with [jp_interactive()].
 #' @return A ggplot object.
 #' @examples
 #' tb <- subset(us_mortality, cause == "Tuberculosis")
@@ -600,23 +612,29 @@ plot_models <- function(object, cohort = 1L, overlay = FALSE, ncol = NULL) {
 #' plot_apc(fit)
 #' plot_aapc(fit)
 #' @export
-plot_apc <- function(object, model = "final", ncol = NULL) {
+plot_apc <- function(object, model = "final", ncol = NULL,
+                     interactive = FALSE) {
+  ia <- isTRUE(interactive)
+  if (ia) jp_need("ggiraph", "interactive graphics")
+  geom <- function(name) jp_geom(name, ia)
   pd <- jp_plot_data(object, model)
-  sg <- pd$segments
   nm <- jp_stat_names(object$settings$interval, object$settings$log,
                        object$settings$family)
+  digits <- if (object$settings$log) 1L else 3L
+  if (ia) pd <- jp_trend_tips(pd, nm, digits, object$settings)
+  sg <- pd$segments
   ylab <- if (object$settings$log) paste0(nm$apc, " (%)") else nm$apc
-  g <- ggplot2::ggplot(sg) +
+  g <- ggplot2::ggplot(sg, jp_ia_aes(ggplot2::aes(), ia)) +
     ggplot2::geom_hline(yintercept = 0, color = jp_ink[["axis"]],
                         linewidth = 0.4) +
-    ggplot2::geom_rect(ggplot2::aes(xmin = .data$start, xmax = .data$end,
-                                    ymin = .data$lower, ymax = .data$upper,
-                                    fill = .data$trend), alpha = 0.18) +
-    ggplot2::geom_segment(ggplot2::aes(x = .data$start, xend = .data$end,
-                                       y = .data$estimate,
-                                       yend = .data$estimate,
-                                       color = .data$trend),
-                          linewidth = 1, lineend = "round") +
+    geom("geom_rect")(ggplot2::aes(xmin = .data$start, xmax = .data$end,
+                                   ymin = .data$lower, ymax = .data$upper,
+                                   fill = .data$trend), alpha = 0.18) +
+    geom("geom_segment")(ggplot2::aes(x = .data$start, xend = .data$end,
+                                      y = .data$estimate,
+                                      yend = .data$estimate,
+                                      color = .data$trend),
+                         linewidth = 1, lineend = "round") +
     ggplot2::geom_text(ggplot2::aes(x = .data$x, y = .data$upper,
                                     label = .data$label),
                        vjust = -0.6, size = 3, color = jp_ink[["secondary"]]) +
@@ -636,7 +654,10 @@ plot_apc <- function(object, model = "final", ncol = NULL) {
 
 #' @rdname plot_apc
 #' @export
-plot_aapc <- function(object, model = "final") {
+plot_aapc <- function(object, model = "final", interactive = FALSE) {
+  ia <- isTRUE(interactive)
+  if (ia) jp_need("ggiraph", "interactive graphics")
+  geom <- function(name) jp_geom(name, ia)
   a <- aapc(object, model)
   if (is.null(a)) {
     stop("No AAPC available.", call. = FALSE)
@@ -656,14 +677,24 @@ plot_aapc <- function(object, model = "final") {
   a$hjust <- ifelse(rel < 0.3, 0, ifelse(rel > 0.7, 1, 0.5))
   nm <- jp_stat_names(object$settings$interval, object$settings$log,
                        object$settings$family)
-  ggplot2::ggplot(a, ggplot2::aes(x = .data$estimate, y = .data$cohort)) +
+  if (ia) {
+    a$data_id <- paste0(a$cohort, "|aapc|", a$range)
+    a$tooltip <- paste0(
+      "<b>", jp_html(a$cohort), "</b><br>", jp_html(a$range), "<br>",
+      nm$aapc_abbr, " ", jp_fmt(a$estimate), ifelse(a$significant, "*", ""),
+      jp_tip_ci(a$lower, a$upper, 1L), jp_tip_p(a$p_value), "<br>",
+      as.character(a$trend)
+    )
+  }
+  ggplot2::ggplot(a, jp_ia_aes(ggplot2::aes(x = .data$estimate,
+                                            y = .data$cohort), ia)) +
     ggplot2::geom_vline(xintercept = 0, color = jp_ink[["axis"]],
                         linewidth = 0.4) +
-    ggplot2::geom_errorbar(ggplot2::aes(xmin = .data$lower,
-                                        xmax = .data$upper,
-                                        color = .data$trend),
-                           width = 0, linewidth = 0.7, orientation = "y") +
-    ggplot2::geom_point(ggplot2::aes(color = .data$trend), size = 2.4) +
+    geom("geom_errorbar")(ggplot2::aes(xmin = .data$lower,
+                                       xmax = .data$upper,
+                                       color = .data$trend),
+                          width = 0, linewidth = 0.7, orientation = "y") +
+    geom("geom_point")(ggplot2::aes(color = .data$trend), size = 2.4) +
     ggplot2::geom_text(ggplot2::aes(hjust = .data$hjust,
                                     label = paste0(jp_fmt(.data$estimate),
                                                    " (", jp_fmt(.data$lower),
@@ -691,13 +722,18 @@ plot_aapc <- function(object, model = "final") {
 #' p value of each test against its significance level.
 #'
 #' @param object A `joinpoint` object.
+#' @param interactive Draw interactive `ggiraph` layers (tooltips and linked
+#'   highlighting); show the result with [jp_interactive()].
 #' @return A ggplot object.
 #' @examples
 #' tb <- subset(us_mortality, cause == "Tuberculosis")
 #' fit <- joinpoint(tb, year, rate, kmax = 2, ci_method = "parametric")
 #' plot_selection(fit)
 #' @export
-plot_selection <- function(object) {
+plot_selection <- function(object, interactive = FALSE) {
+  ia <- isTRUE(interactive)
+  if (ia) jp_need("ggiraph", "interactive graphics")
+  geom <- function(name) jp_geom(name, ia)
   ms <- model_selection(object)
   method <- object$settings$method
   coh <- function(d) {
@@ -709,9 +745,16 @@ plot_selection <- function(object) {
     what <- if (method == "lrt") "Monte Carlo likelihood ratio" else "permutation"
     t$cohort <- coh(t)
     t$test <- factor(paste0(t$null, " vs ", t$alternative))
+    t$data_id <- paste0(t$cohort, "|test|", t$test)
+    t$tooltip <- paste0("<b>", jp_html(t$cohort), "</b><br>", t$null,
+                        " vs ", t$alternative, " joinpoints<br>p ",
+                        jp_pformat(t$p_value), "<br>Level ", jp_num(t$alpha),
+                        "<br>", ifelse(t$reject, "Null rejected",
+                                       "Not rejected"))
     return(
-      ggplot2::ggplot(t, ggplot2::aes(x = .data$test, y = .data$p_value)) +
-        ggplot2::geom_col(ggplot2::aes(fill = .data$reject), width = 0.6) +
+      ggplot2::ggplot(t, jp_ia_aes(ggplot2::aes(x = .data$test,
+                                                y = .data$p_value), ia)) +
+        geom("geom_col")(ggplot2::aes(fill = .data$reject), width = 0.6) +
         ggplot2::geom_point(ggplot2::aes(y = .data$alpha), shape = 95,
                             size = 8, color = jp_ink[["primary"]]) +
         ggplot2::scale_fill_manual(values = c(`TRUE` = jp_pal[1L],
@@ -734,12 +777,20 @@ plot_selection <- function(object) {
                selected = cr$selected)
   }))
   long$criterion <- factor(long$criterion, toupper(stats))
+  # Hovering a model highlights it under every criterion.
+  long$data_id <- paste0(long$cohort, "|k|", long$joinpoints)
+  long$tooltip <- paste0("<b>", jp_html(long$cohort), "</b><br>",
+                         long$joinpoints, " joinpoint",
+                         ifelse(long$joinpoints == 1, "", "s"), "<br>",
+                         long$criterion, " ", jp_num(long$value),
+                         ifelse(long$selected, "<br>Final selected model",
+                                ""))
   sel <- long[long$selected & long$criterion == toupper(switch(
     method, dds = "bic", permutation = "bic", method)), ]
   ggplot2::ggplot(long, ggplot2::aes(x = .data$joinpoints, y = .data$value,
                                      color = .data$criterion)) +
     ggplot2::geom_line(linewidth = 0.7) +
-    ggplot2::geom_point(size = 1.8) +
+    geom("geom_point")(jp_ia_aes(ggplot2::aes(), ia), size = 1.8) +
     ggplot2::geom_point(data = sel, shape = 21, size = 4, stroke = 1,
                         color = jp_ink[["primary"]], fill = NA) +
     scale_color_joinpoint(name = NULL) +

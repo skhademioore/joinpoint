@@ -19,6 +19,7 @@
   log_y = FALSE,
   digits = NULL,
   ncol = NULL,
+  interactive = FALSE,
   ...
 )
 
@@ -62,6 +63,10 @@ errors are available.}
 for slopes of linear models).}
 
 \item{ncol}{Number of facet columns.}
+
+\item{interactive}{Draw the layers with the interactive versions of the
+\code{ggiraph} package (tooltips and linked highlighting); show the result
+with \code{\link[=jp_interactive]{jp_interactive()}}.}
 
 \item{...}{Ignored.}
 

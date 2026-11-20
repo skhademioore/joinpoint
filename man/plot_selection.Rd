@@ -4,10 +4,13 @@
 \alias{plot_selection}
 \title{Plot model selection}
 \usage{
-plot_selection(object)
+plot_selection(object, interactive = FALSE)
 }
 \arguments{
 \item{object}{A \code{joinpoint} object.}
+
+\item{interactive}{Draw interactive \code{ggiraph} layers (tooltips and linked
+highlighting); show the result with \code{\link[=jp_interactive]{jp_interactive()}}.}
 }
 \value{
 A ggplot object.

@@ -1,0 +1,187 @@
+---
+title: "Sharing results: tables, figures, reports and interactive graphics"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Sharing results: tables, figures, reports and interactive graphics}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>", fig.width = 7,
+                      fig.height = 4.2, dpi = 150, out.width = "100%")
+ia <- requireNamespace("ggiraph", quietly = TRUE)
+pandoc <- rmarkdown::pandoc_available()
+```
+
+An analysis ends in a manuscript, a report, a slide or a web page. This
+vignette shows how the tables and figures of a joinpoint fit get there:
+saved to files in the format each needs, written into a complete report,
+printed in R Markdown and Quarto documents, and drawn as interactive
+graphics.
+
+The examples use the tuberculosis and stroke mortality of `us_mortality`:
+
+```{r}
+library(joinpoint)
+fit <- joinpoint(subset(us_mortality, cause %in% c("Stroke", "Tuberculosis")),
+                 year, rate, by = "cause", kmax = 3, ci_method = "parametric")
+dir <- file.path(tempdir(), "joinpoint-reports")
+dir.create(dir, showWarnings = FALSE)
+```
+
+## Tables
+
+`jp_save()` writes a table in the format given by the extension of the file:
+`.csv`, `.tsv` and `.txt` for spreadsheets and other software, `.md` for
+Markdown, `.tex` for LaTeX, and `.docx`, `.odt`, `.rtf`, `.pptx`, `.html`
+and `.pdf` for documents. A title becomes the caption, and a note is printed
+under the table:
+
+```{r}
+tab <- jp_table(fit)
+jp_save(tab, file.path(dir, "trends.tex"), title = "Trends in mortality",
+        note = "* The APC or AAPC differs from 0 at alpha = 0.05.",
+        label = "tab:trends")
+```
+
+The LaTeX table uses the rules of the booktabs package
+(`\usepackage{booktabs}` in the preamble) and escapes the special
+characters of LaTeX:
+
+```{r, echo = FALSE, comment = ""}
+cat(readLines(file.path(dir, "trends.tex")), sep = "\n")
+```
+
+Any data frame can be saved this way, for example the APCs as numbers or
+the model selection statistics, with the decimals set by `digits`:
+
+```{r}
+jp_save(apc(fit), file.path(dir, "apc.csv"))
+jp_save(model_selection(fit)$criteria, file.path(dir, "selection.md"),
+        digits = 2)
+```
+
+Word, OpenDocument, PowerPoint, RTF, HTML and PDF documents are made with
+Pandoc, which comes with RStudio and Quarto, through the rmarkdown package;
+PDF documents also need LaTeX (for example `tinytex::install_tinytex()`).
+A Word table for a manuscript:
+
+```{r, eval = pandoc}
+jp_save(tab, file.path(dir, "trends.docx"), title = "Trends in mortality")
+```
+
+## Figures
+
+Figures are saved the same way: in the image formats of `ggsave()` (`.png`,
+`.pdf`, `.svg`, `.tiff`, `.eps` and others), as a LaTeX figure, or inside a
+Word, OpenDocument, PowerPoint or HTML document. `width`, `height` (inches)
+and `dpi` set the size and resolution:
+
+```{r}
+g <- autoplot(fit, color_by = "trend", log_y = TRUE)
+jp_save(g, file.path(dir, "trends.png"), width = 7, height = 4, dpi = 300)
+jp_save(g, file.path(dir, "trends.tex"), title = "Mortality trends",
+        label = "fig:trends")
+```
+
+The `.tex` file is a `figure` environment that includes a PDF of the
+figure written beside it (`trends.pdf`), ready for `\input{}` in a
+manuscript.
+
+## Complete reports
+
+`jp_report()` writes the whole analysis: the settings in words, the table of
+APCs and AAPCs, the joinpoints, the model selection statistics and the
+figures. An `.Rmd` or `.qmd` file gives the R Markdown or Quarto source,
+with the fit saved beside it, ready to edit and render:
+
+```{r}
+jp_report(fit, file.path(dir, "mortality.qmd"),
+          title = "Trends in mortality", author = "A. Analyst")
+```
+
+```{r, echo = FALSE, comment = ""}
+cat(head(readLines(file.path(dir, "mortality.qmd")), 32), sep = "\n")
+```
+
+Other extensions give the rendered report: `.html`, `.docx`, `.odt`,
+`.pdf`, `.md` or `.tex`. The figures of HTML reports are interactive when
+the ggiraph package is installed.
+
+```{r, eval = pandoc}
+jp_report(fit, file.path(dir, "mortality.docx"), title = "Trends in mortality")
+```
+
+`jp_save()` of a fit writes the same report.
+
+## Fits in R Markdown and Quarto documents
+
+A fit printed in a chunk of an R Markdown or Quarto document shows the same
+summary as in the console. With the option `joinpoint.knit_table`, set once
+in the first chunk of the document, it appears instead as the table of
+`jp_table()`, formatted for the output (HTML, LaTeX, Word or Markdown); the
+chunk option `tab.cap` sets its caption:
+
+```{r, tab.cap = "Trends in stroke and tuberculosis mortality."}
+options(joinpoint.knit_table = TRUE)
+fit
+```
+
+```{r, include = FALSE}
+options(joinpoint.knit_table = NULL)
+```
+
+Figures are drawn by `autoplot()` and the other plot functions as in any
+chunk.
+
+## Interactive graphics
+
+Every figure of the package can be drawn as an interactive graphic, with
+`interactive = TRUE` in the plot function and `jp_interactive()`, or
+`jp_interactive()` on the fit directly. The graphic looks like the static
+figure. Hovering a segment shows its period, APC, confidence interval and
+p value and highlights the segment with its band and label; hovering an
+observation shows its value, its confidence interval and the fitted trend;
+hovering a joinpoint shows its location and confidence interval. The
+toolbar zooms and saves the graphic as an image.
+
+```{r, eval = ia}
+jp_interactive(fit, color_by = "trend", log_y = TRUE, height = 4.2)
+```
+
+```{r, eval = !ia, echo = FALSE, fig.alt = "Stroke and tuberculosis mortality from 1900 to 1998 on a logarithmic axis, with the fitted joinpoint models colored by trend direction."}
+autoplot(fit, color_by = "trend", log_y = TRUE)
+```
+
+The other figures are chosen with `plot`, here the APC of each segment:
+
+```{r, eval = ia}
+jp_interactive(fit, plot = "apc", height = 3.5)
+```
+
+A figure changed with the grammar of ggplot2 stays interactive:
+
+```{r, eval = ia}
+g <- autoplot(fit, interactive = TRUE) +
+  ggplot2::labs(title = "Mortality per 100,000", x = NULL)
+jp_interactive(g, height = 4.2)
+```
+
+The graphics are htmlwidgets: they appear in the RStudio viewer, in HTML
+documents made with R Markdown or Quarto, on pkgdown sites and in Shiny
+applications (with `ggiraph::girafeOutput()` and `ggiraph::renderGirafe()`),
+and `jp_save()` writes them to a standalone web page:
+
+```{r, eval = ia}
+jp_save(jp_interactive(fit), file.path(dir, "mortality.html"))
+```
+
+By default the text of the graphic uses fonts found on the computer that
+opens it, which keeps the page small; `embed_fonts = TRUE` embeds the
+fonts, so that the graphic looks exactly the same everywhere, at the cost
+of several megabytes.
+
+```{r cleanup, include = FALSE}
+unlink(dir, recursive = TRUE)
+```

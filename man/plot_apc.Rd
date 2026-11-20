@@ -5,9 +5,9 @@
 \alias{plot_aapc}
 \title{Plot segment APCs and AAPCs}
 \usage{
-plot_apc(object, model = "final", ncol = NULL)
+plot_apc(object, model = "final", ncol = NULL, interactive = FALSE)
 
-plot_aapc(object, model = "final")
+plot_aapc(object, model = "final", interactive = FALSE)
 }
 \arguments{
 \item{object}{A \code{joinpoint} object.}
@@ -15,6 +15,9 @@ plot_aapc(object, model = "final")
 \item{model}{\code{"final"} or a number of joinpoints.}
 
 \item{ncol}{Number of facet columns.}
+
+\item{interactive}{Draw interactive \code{ggiraph} layers (tooltips and linked
+highlighting); show the result with \code{\link[=jp_interactive]{jp_interactive()}}.}
 }
 \value{
 A ggplot object.

@@ -10,6 +10,9 @@ vignette: >
 ```{r setup, include = FALSE}
 knitr::opts_chunk$set(collapse = TRUE, comment = "#>", fig.width = 7,
                       fig.height = 4.2, dpi = 150, out.width = "100%")
+# The figures are interactive when the ggiraph package is installed, and
+# static otherwise.
+ia <- requireNamespace("ggiraph", quietly = TRUE)
 ```
 
 Khademioore and colleagues (2026, *Canadian Journal of Public Health*)
@@ -121,9 +124,19 @@ knitr::kable(data.frame(
 
 The yearly means and the fitted segments of Figure 3, with the 95%
 confidence interval of each yearly mean as an error bar and the slope of
-each segment and its interval written next to the segment:
+each segment and its interval written next to the segment. The figures of
+this article are interactive (see `jp_interactive()`): hovering a segment
+shows its period, slope, confidence interval and p value and highlights it,
+hovering a year shows its mean with its confidence interval and the fitted
+value, and the toolbar zooms and saves the figure as an image.
 
-```{r, fig.alt = "Mean prepregnancy BMI in Ontario by fiscal year with 95% error bars and the fitted linear joinpoint model, with the slope of each segment and its confidence interval written on the segment."}
+```{r, eval = ia}
+g <- autoplot(fit, error_bars = TRUE, labels = "ci", interactive = TRUE) +
+  labs(x = "Fiscal year (start)", y = expression("Mean BMI (kg/m"^2 * ")"))
+jp_interactive(g, width = 7, height = 4.2)
+```
+
+```{r, eval = !ia, echo = FALSE, fig.alt = "Mean prepregnancy BMI in Ontario by fiscal year with 95% error bars and the fitted linear joinpoint model, with the slope of each segment and its confidence interval written on the segment."}
 autoplot(fit, error_bars = TRUE, labels = "ci") +
   labs(x = "Fiscal year (start)", y = expression("Mean BMI (kg/m"^2 * ")"))
 ```
@@ -154,7 +167,14 @@ fit_cat <- joinpoint(ontario_bmi, year, count = count, population = births,
 On a logarithmic axis the parallel shape of the obesity classes and the
 divergence of underweight and normal weight stand out:
 
-```{r, fig.height = 5, fig.alt = "Prevalence of the six BMI categories by fiscal year in one panel on a logarithmic axis, with 95% error bars and the fitted joinpoint models."}
+```{r, eval = ia}
+g <- autoplot(fit_cat, layout = "overlay", labels = "none", error_bars = TRUE,
+              log_y = TRUE, interactive = TRUE) +
+  labs(x = "Fiscal year (start)", y = "Prevalence (%)")
+jp_interactive(g, width = 7, height = 5)
+```
+
+```{r, eval = !ia, echo = FALSE, fig.height = 5, fig.alt = "Prevalence of the six BMI categories by fiscal year in one panel on a logarithmic axis, with 95% error bars and the fitted joinpoint models."}
 autoplot(fit_cat, layout = "overlay", labels = "none", error_bars = TRUE,
          log_y = TRUE) +
   labs(x = "Fiscal year (start)", y = "Prevalence (%)")
@@ -162,7 +182,14 @@ autoplot(fit_cat, layout = "overlay", labels = "none", error_bars = TRUE,
 
 Panels colored by trend direction show where each category turned:
 
-```{r, fig.height = 6, fig.width = 8, fig.alt = "Six panels, one per BMI category, showing prevalence by fiscal year with 95% error bars, segments colored by trend direction, and the average annual percent change in each panel title."}
+```{r, eval = ia}
+g <- autoplot(fit_cat, color_by = "trend", error_bars = TRUE, aapc = TRUE,
+              interactive = TRUE) +
+  labs(x = "Fiscal year (start)", y = "Prevalence (%)")
+jp_interactive(g, width = 8, height = 6)
+```
+
+```{r, eval = !ia, echo = FALSE, fig.height = 6, fig.width = 8, fig.alt = "Six panels, one per BMI category, showing prevalence by fiscal year with 95% error bars, segments colored by trend direction, and the average annual percent change in each panel title."}
 autoplot(fit_cat, color_by = "trend", error_bars = TRUE, aapc = TRUE) +
   labs(x = "Fiscal year (start)", y = "Prevalence (%)")
 ```
