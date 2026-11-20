@@ -60,7 +60,7 @@ jp_criteria <- function(x, y, S, models, method, extra = NULL) {
   ks <- vapply(models, `[[`, numeric(1), "k")
   sse <- vapply(models, `[[`, numeric(1), "sse")
   # Exact fits share the numerical zero, so the penalty decides among them.
-  tol <- jp_tiny(jp_whiten_mat(S), y, x)
+  tol <- jp_tiny(jp_whiten_mat(S), y, x, extra)
   ls <- pmax(sse, tol)
   tab <- data.frame(
     joinpoints = ks, sse = sse,

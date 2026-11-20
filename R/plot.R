@@ -662,11 +662,7 @@ plot_aapc <- function(object, model = "final", interactive = FALSE) {
   if (is.null(a)) {
     stop("No AAPC available.", call. = FALSE)
   }
-  a$cohort <- if (is.null(object$by)) {
-    "All"
-  } else {
-    do.call(paste, c(a[object$by], sep = ", "))
-  }
+  a$cohort <- jp_row_labels(object, a)
   a$cohort <- factor(a$cohort, rev(unique(a$cohort)))
   a$range <- factor(a$range, unique(a$range))
   a$trend <- jp_trend(a$estimate, a$p_value, object$settings$control$alpha_aapc)
@@ -682,7 +678,8 @@ plot_aapc <- function(object, model = "final", interactive = FALSE) {
     a$tooltip <- paste0(
       "<b>", jp_html(a$cohort), "</b><br>", jp_html(a$range), "<br>",
       nm$aapc_abbr, " ", jp_fmt(a$estimate), ifelse(a$significant, "*", ""),
-      jp_tip_ci(a$lower, a$upper, 1L), jp_tip_p(a$p_value), "<br>",
+      jp_tip_ci(a$lower, a$upper, 1L, object$settings$control$alpha_aapc),
+      jp_tip_p(a$p_value), "<br>",
       as.character(a$trend)
     )
   }
@@ -736,9 +733,7 @@ plot_selection <- function(object, interactive = FALSE) {
   geom <- function(name) jp_geom(name, ia)
   ms <- model_selection(object)
   method <- object$settings$method
-  coh <- function(d) {
-    if (is.null(object$by)) "All" else do.call(paste, c(d[object$by], sep = ", "))
-  }
+  coh <- function(d) jp_row_labels(object, d)
   if (method %in% c("permutation", "lrt")) {
     t <- ms$tests
     if (is.null(t)) stop("No tests were performed.", call. = FALSE)
@@ -829,7 +824,7 @@ plot_residuals <- function(object, type = c("time", "qq", "acf"),
       return(NULL)
     }
     m <- jp_pick(f, model)
-    if (sum(m$wresid^2) <= jp_tiny(jp_whiten_mat(f$S), f$y, f$x)) {
+    if (sum(m$wresid^2) <= jp_tiny(jp_whiten_mat(f$S), f$y, f$x, f$extra)) {
       stop("Cohort ", jp_cohort_label(object, g), " is fitted exactly; its ",
            "residuals are numerically zero.", call. = FALSE)
     }

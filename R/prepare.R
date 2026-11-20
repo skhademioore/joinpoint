@@ -51,7 +51,7 @@ jp_prepare <- function(x, r, se, count, population, type, variance, log,
       !is.null(count)) {
     # A supplied crude rate with its counts: the Poisson standard error has
     # the relative size 1 / sqrt(count) whatever the rate multiplier.
-    if (any(count < 0, na.rm = TRUE)) {
+    if (any(count[included] < 0, na.rm = TRUE)) {
       stop("`count` must be nonnegative.", call. = FALSE)
     }
     se <- r / sqrt(pmax(count, 0.5))
@@ -61,16 +61,17 @@ jp_prepare <- function(x, r, se, count, population, type, variance, log,
       stop("`count` and `population` are required to calculate a ", type,
            ".", call. = FALSE)
     }
-    if (any(population <= 0, na.rm = TRUE)) {
+    ci <- count[included]
+    pi <- population[included]
+    if (any(pi <= 0, na.rm = TRUE)) {
       stop("`population` must be positive.", call. = FALSE)
     }
-    if (any(count < 0, na.rm = TRUE)) {
+    if (any(ci < 0, na.rm = TRUE)) {
       stop("`count` must be nonnegative.", call. = FALSE)
     }
-    if (all(count == 0, na.rm = TRUE)) stop("All counts are zero.", call. = FALSE)
-    if (variance == "glm" && (any(count != round(count), na.rm = TRUE) ||
-        (type != "crude_rate" &&
-         any(population != round(population), na.rm = TRUE)))) {
+    if (all(ci == 0, na.rm = TRUE)) stop("All counts are zero.", call. = FALSE)
+    if (variance == "glm" && (any(ci != round(ci), na.rm = TRUE) ||
+        (type != "crude_rate" && any(pi != round(pi), na.rm = TRUE)))) {
       stop("Poisson and binomial fits need whole-number counts and ",
            "binomial totals.", call. = FALSE)
     }
@@ -82,15 +83,15 @@ jp_prepare <- function(x, r, se, count, population, type, variance, log,
     }
     if (type == "crude_rate") {
       r <- rate_per * cnt / population
-      if (is.null(se)) se <- rate_per * sqrt(cnt) / population
+      if (is.null(se)) se <- rate_per * sqrt(pmax(cnt, 0)) / population
     } else {
       p <- cnt / population
-      if (any(p > 1, na.rm = TRUE)) {
+      if (any(p[included] > 1, na.rm = TRUE)) {
         stop("Proportions must lie in [0, 1].", call. = FALSE)
       }
       mult <- if (type == "percent") 100 else 1
       r <- mult * p
-      if (is.null(se)) se <- mult * sqrt(p * (1 - p) / population)
+      if (is.null(se)) se <- mult * sqrt(pmax(p * (1 - p), 0) / population)
     }
   } else if (type == "count") {
     if (is.null(r)) r <- count
@@ -111,6 +112,10 @@ jp_prepare <- function(x, r, se, count, population, type, variance, log,
            "calculated from `count` and `population`.", call. = FALSE)
     }
   }
+  # Excluded rows are only shown: values that cannot be computed (such as a
+  # rate with a zero population) are missing.
+  r[!included & !is.finite(r)] <- NA
+  if (!is.null(se)) se[!included & !is.finite(se)] <- NA
   ri <- r[included]
   if (variance == "se") {
     if (is.null(se)) {

@@ -79,7 +79,11 @@ linear model \code{y = xb} (\code{FALSE}).}
 \item{autocorrelation}{First order autocorrelation of the errors: a number
 in (-1, 1), or \code{"estimate"} to estimate it from the data. Lags count the
 observations of the cohort in time order, excluded ones included, so the
-observations are assumed equally spaced.}
+observations are assumed equally spaced. The estimate is the lag one
+autocorrelation of the residuals of the largest model (Kim et al. 2000)
+or, with excluded observations, the maximum likelihood value of an AR(1)
+process observed at the included positions (when every gap between them
+is even the sign is not identified, and the nonnegative value is used).}
 
 \item{vcov}{Optional variance-covariance matrix of the responses, with one
 row and column per row of \code{data} (single cohort only). Like \code{se}, it
@@ -95,7 +99,13 @@ uses the recommended maximum for the number of observations.}
 selection) or \code{"permutation"} for least squares fits; \code{"wbic"},
 \code{"bic"}, \code{"bic3"} or \code{"lrt"} (sequential Monte Carlo likelihood ratio
 test) for Poisson and binomial fits. The modified BIC follows the NCI
-Joinpoint definition, which depends on the units of \code{y} and \code{x}.}
+Joinpoint definition, which depends on the units of \code{y} and \code{x}. Two
+uses of the criteria go beyond the settings in which they were derived
+and validated: the weighted BIC of Poisson and binomial fits computes its
+weights from the working response and weights of the final iteratively
+reweighted least squares step, and with covariates or jumps the modified
+BIC keeps the dimension terms of the model without them. Results of these
+combinations should be checked against another criterion.}
 
 \item{ci_method}{Confidence interval method for APCs, AAPCs and joinpoint
 locations: \code{"empirical"} (empirical quantile, the default for least
@@ -150,9 +160,15 @@ Every observation before the change is multiplied by the ratio.}
 \item{cr_covariance}{How the uncertainty of the comparability ratio
 enters the error covariance. \code{"shared"} (default): the one estimated
 ratio multiplies every old coding observation, so by the delta method
-it adds \code{cr_variance / comparability_ratio^2} to the covariance of every
-pair of them on the log scale (with constant variance, after the
-residual variance is estimated from the largest model). \code{"nci"}: as the
+it adds the known variance \code{v = cr_variance / comparability_ratio^2} to
+the covariance of every pair of them on the log scale. The error
+covariance is \verb{s R + v u u'}, with \code{R} the relative covariance of the
+observations (constant variance, \code{se}, autocorrelation or \code{vcov}), \code{u}
+the indicator of the old coding observations and \code{s} estimated so that
+the largest model has a weighted residual sum of squares equal to its
+residual degrees of freedom; this covariance is then used with its scale,
+so the known term is not rescaled. An exact fit (no residual variance)
+makes it degenerate and is refused. \code{"nci"}: as the
 NCI Joinpoint program, the variance of each adjusted old coding rate
 becomes \verb{CR^2 Var(r) + r^2 cr_variance}, independently for each
 observation, and \code{cr_variance} is not used with constant variance.}

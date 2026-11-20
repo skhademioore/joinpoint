@@ -116,3 +116,51 @@ test_that("clustering validates its controls and bounds its search", {
     "Clustering: recommended maximum"
   ))
 })
+
+test_that("cohorts with the same display label stay apart", {
+  mk <- function(sep) {
+    d <- expand.grid(x = 1:8, g = 1:2)
+    d$a <- ifelse(d$g == 1, paste0("A", sep, "B"), "A")
+    d$b <- ifelse(d$g == 1, "C", paste0("B", sep, "C"))
+    d$y <- exp(1 + .05 * d$x + log(10) * (d$g == 2) + .01 * sin(d$x))
+    d
+  }
+  d <- mk(", ")
+  f <- joinpoint(d, x, y, by = c("a", "b"), kmax = 0, ci_method = "parametric")
+  b <- ggplot2::ggplot_build(autoplot(f, labels = "none"))
+  expect_equal(nrow(b$layout$layout), 2L)
+  expect_equal(length(unique(plot_aapc(f)$data$cohort)), 2L)
+  # Prediction matches tuples, whatever characters the keys hold.
+  d <- mk("\r")
+  f <- joinpoint(d, x, y, by = c("a", "b"), kmax = 0, ci_method = "parametric")
+  one <- vapply(1:2, function(g) {
+    predict(joinpoint(d[d$g == g, ], x, y, kmax = 0, ci_method = "parametric"),
+            data.frame(x = 5))$fit
+  }, numeric(1))
+  expect_equal(predict(f, d[c(5, 13), c("x", "a", "b")])$fit, one,
+               tolerance = 1e-10)
+})
+
+test_that("a by-variable named Model is refused", {
+  d <- data.frame(x = rep(1:12, 2), Model = rep(c("a", "b"), each = 12))
+  d$y <- exp(2 + .03 * d$x + .01 * sin(d$x) + .3 * (d$Model == "b"))
+  expect_error(joinpoint(d, x, y, by = "Model", kmax = 0), "rename Model")
+})
+
+test_that("exactly parallel age trends form one cluster", {
+  d <- expand.grid(x = 1:20, age = 1:3)
+  d$count <- 100 * d$age
+  d$pop <- 10000
+  cl <- jp_cluster(d, x, count, pop, age, c("1" = 1, "2" = 1, "3" = 1),
+                   kmax = 0, ci_method = "parametric")
+  expect_equal(cl$selection$clusters[cl$selection$selected], 1)
+  expect_equal(cl$settings$standardize, "original")
+})
+
+test_that("excluded rows are not validated", {
+  d <- data.frame(x = 1:12, n = c(-1, 5:15), p = c(0, rep(100, 11)))
+  f <- joinpoint(d, x, count = n, population = p, exclude = 1, kmax = 0,
+                 ci_method = "parametric")
+  expect_true(is.na(f$fits[[1]]$data$r[1]))
+  expect_equal(nobs(f), 11)
+})

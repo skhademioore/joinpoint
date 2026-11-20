@@ -33,7 +33,11 @@ jp_fit_cohort <- function(d, spec, cohort_index = 1L) {
   glm <- spec$family != "gaussian"
 
   # Continuous joinpoints: the observations and one point inside each gap.
-  cand <- jp_candidates(x, if (spec$continuous) 1L else ctrl$n_grid)
+  # Without joinpoints (kmax = 0) no candidates are searched, so the points
+  # between observations are not built.
+  no_jp <- identical(as.numeric(spec$kmax), 0)
+  cand <- jp_candidates(x, if (no_jp) 0L else if (spec$continuous) 1L else
+                          ctrl$n_grid)
   cons <- jp_constraints(x, cand, ctrl$min_obs_end, ctrl$min_obs_between,
                          closed = spec$continuous)
   lim <- jp_kmax(spec, ctrl, cons, n, NCOL(extra) * !is.null(extra))
@@ -69,26 +73,54 @@ jp_fit_cohort <- function(d, spec, cohort_index = 1L) {
     rho <- spec$autocorrelation
     if (identical(rho, "estimate")) {
       S0 <- jp_covariance(inc$v, 0, V, inc$r, log)
-      rho <- jp_estimate_rho(prelim(S0)$wresid, jp_tiny(jp_whiten_mat(S0), y, x))
+      rho <- jp_estimate_rho(prelim(S0)$wresid,
+                             jp_tiny(jp_whiten_mat(S0), y, x, extra),
+                             gaps = diff(pos))
     }
   }
   S <- jp_covariance(inc$v, rho, V, inc$r, log, pos)
   # Comparability ratio: every old coding observation is multiplied by the
-  # same estimated ratio, so its uncertainty adds Var(log CR) to every pair
-  # of old coding observations (a rank one term; delta method). With
-  # constant variance the residual variance is first estimated from the
-  # largest model, to put both terms on one scale.
+  # same estimated ratio, so its uncertainty adds v = Var(log CR) to every
+  # pair of old coding observations (a rank one term; delta method). The
+  # covariance is s R + v u u', with R the relative covariance of the
+  # observations (constant, supplied standard errors, autocorrelation or a
+  # supplied matrix), s its unknown scale and v known. s is estimated from
+  # the largest model so that its weighted residual sum of squares equals
+  # its residual degrees of freedom; the covariance then has a known scale,
+  # which the model fits use as it is instead of rescaling the external
+  # term with the residual variance.
   if (!is.null(spec$comparability_ratio) && spec$cr_variance > 0 &&
       identical(spec$cr_covariance, "shared")) {
     u <- as.numeric(x < jump_at)
     vl <- spec$cr_variance / spec$comparability_ratio^2
-    S <- if (is.matrix(S)) S else diag(S, length(S))
-    if (all(is.na(inc$v))) {
-      ft0 <- prelim(diag(S))
-      df0 <- n - 2 * (length(ft0$tau) + 1) - NCOL(extra) * !is.null(extra)
-      S <- S * if (df0 > 0) ft0$sse / df0 else 1
+    R0 <- if (is.matrix(S)) S else diag(S, length(S))
+    ft0 <- prelim(S)
+    df0 <- n - 2L - length(ft0$tau) - NCOL(extra) * !is.null(extra)
+    if (df0 <= 0) {
+      stop("The residual variance cannot be estimated for the shared ",
+           "comparability ratio covariance: the largest model leaves no ",
+           "residual degrees of freedom. Lower `kmax`, or use ",
+           "cr_covariance = \"nci\".", call. = FALSE)
     }
-    S <- S + vl * tcrossprod(u)
+    sc <- ft0$sse / df0 * mean(diag(R0))
+    degenerate <- function(sc) !is.finite(sc) || sc <= 1e-10 * vl
+    if (!degenerate(sc)) {
+      for (it in seq_len(100L)) {
+        Sa <- sc / mean(diag(R0)) * R0 + vl * tcrossprod(u)
+        r <- jp_fit_fixed(x, y, Sa, ft0$tau, extra)$sse / df0
+        sc <- sc * r
+        if (degenerate(sc) || abs(r - 1) < 1e-8) break
+      }
+    }
+    if (degenerate(sc)) {
+      stop("The shared comparability ratio covariance is degenerate: the ",
+           "residual variance of the largest model is zero or negligible ",
+           "against the variance of the log comparability ratio (an exact ",
+           "fit). Use cr_covariance = \"nci\" or cr_variance = 0.",
+           call. = FALSE)
+    }
+    S <- sc / mean(diag(R0)) * R0 + vl * tcrossprod(u)
+    attr(S, "known_scale") <- TRUE
   }
 
   if (glm) {
@@ -236,7 +268,7 @@ jp_fit_cohort <- function(d, spec, cohort_index = 1L) {
     k_selected = k_sel, k_statistical = k_stat, kmin = kmin, kmax = kmax,
     criteria = crit, permutation = perm, dds = dds, madwd = madwd,
     method = method, ci_method = ci_method, candidates = cand,
-    constraints = cons, jump_at = jump_at,
+    constraints = cons, jump_at = jump_at, extra = extra,
     comparability_ratio = spec$comparability_ratio, notes = notes,
     ranges = ranges, covariates = spec$covariates,
     covariate_info = spec$covariate_info

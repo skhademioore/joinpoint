@@ -36,8 +36,10 @@ test_that("Poisson variance is computed for supplied crude rates", {
 })
 
 test_that("the comparability ratio uncertainty is shared or per observation", {
+  # Old coding values are half the new coding ones (CR = 2).
   x <- 1:12
-  d <- data.frame(x, y = exp(1 + .1 * x + .01 * rep(c(-1, 1), 6)), se = .1)
+  d <- data.frame(x, y = exp(1 + .1 * x + .01 * rep(c(-1, 1), 6)) /
+                    ifelse(x <= 6, 2, 1), se = .1)
   fit <- function(v, ...) {
     joinpoint(d, x, y, kmax = 0, jump = 6, comparability_ratio = 2,
               cr_variance = v, ci_method = "parametric", ...)
@@ -143,4 +145,37 @@ test_that("excluded responses are not validated or transformed", {
   expect_equal(nobs(f), 5)
   expect_error(joinpoint(data.frame(x = 1:10, y = 1:10), x, y,
                          variance = "glm", kmax = 0))
+})
+
+test_that("the known comparability ratio variance is not rescaled", {
+  x <- 1:20
+  d <- data.frame(x, y = exp(2 + .03 * x + .2 * pmax(x - 10, 0) +
+                               .001 * sin(x)) / ifelse(x <= 10, 2, 1))
+  d$s <- .1 * d$y
+  f <- joinpoint(d, x, y, se = s, jump = 10, comparability_ratio = 2,
+                 cr_variance = .4, kmin = 1, kmax = 1,
+                 ci_method = "parametric")
+  expect_equal(joinpoints(f)$estimate, 10)
+  # Every old coding observation shares the log ratio variance .4 / 2^2.
+  expect_gte(vcov(f)["Intercept 1", "Intercept 1"], .1)
+  # An exact fit leaves no residual variance to combine it with.
+  d$y <- exp(2 + .03 * x) / ifelse(x <= 10, 2, 1)
+  expect_error(joinpoint(d, x, y, jump = 10, comparability_ratio = 2,
+                         cr_variance = .4, kmax = 0, ci_method = "parametric"),
+               "degenerate")
+})
+
+test_that("estimated autocorrelation respects the gaps of excluded rows", {
+  set.seed(20261121)
+  x <- 1:300
+  e <- as.numeric(stats::arima.sim(list(ar = .8), n = 300, sd = sqrt(1 - .64)))
+  d <- data.frame(x, y = 100 + .001 * x + e)
+  ex <- seq(1, 300, by = 2)
+  fit <- function(dd, ...) {
+    one(L(dd, kmax = 0, method = "bic", autocorrelation = "estimate", ...))$S
+  }
+  S1 <- fit(d, exclude = ex)
+  S2 <- fit(d[!d$x %in% ex, ])
+  adj <- function(S) S[1, 2] / sqrt(S[1, 1] * S[2, 2])
+  expect_lt(abs(adj(S1) - adj(S2)), .05)
 })

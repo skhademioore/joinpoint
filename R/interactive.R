@@ -134,9 +134,9 @@ jp_tip_p <- function(p) {
   ifelse(is.na(p), "", paste0("<br>p ", jp_pformat(p)))
 }
 
-jp_tip_ci <- function(lower, upper, digits) {
+jp_tip_ci <- function(lower, upper, digits, alpha = 0.05) {
   ifelse(is.na(lower) | is.na(upper), "",
-         paste0(" (95% CI ", jp_fmt(lower, digits), ", ",
+         paste0(" (", jp_level(alpha), " CI ", jp_fmt(lower, digits), ", ",
                 jp_fmt(upper, digits), ")"))
 }
 
@@ -151,7 +151,8 @@ jp_trend_tips <- function(pd, nm, digits, s) {
     head(sg$cohort), "Segment ", sg$segment, ": ", jp_num(sg$start), "-",
     jp_num(sg$end), "<br>", nm$apc_abbr, " ", jp_fmt(sg$estimate, digits),
     ifelse(sg$trend %in% c("Increasing", "Decreasing"), "*", ""),
-    jp_tip_ci(sg$lower, sg$upper, digits), jp_tip_p(sg$p_value), "<br>",
+    jp_tip_ci(sg$lower, sg$upper, digits, s$control$alpha_apc),
+    jp_tip_p(sg$p_value), "<br>",
     as.character(sg$trend)
   )
   pd$segments <- sg
@@ -176,8 +177,8 @@ jp_trend_tips <- function(pd, nm, digits, s) {
     jp$tooltip <- paste0(
       head(jp$cohort), "Joinpoint ", jp_num(jp$x),
       ifelse(is.na(jp$lower), "",
-             paste0(" (95% CI ", jp_num(jp$lower), ", ", jp_num(jp$upper),
-                    ")")),
+             paste0(" (", jp_level(s$control$alpha_joinpoint), " CI ",
+                    jp_num(jp$lower), ", ", jp_num(jp$upper), ")")),
       "<br>Fitted ", jp_num(jp$y)
     )
     pd$joinpoints <- jp

@@ -124,7 +124,7 @@ jp_glm_model <- function(ft, x, family, phi, jump = NULL) {
     se_slopes = sqrt(diag(V)[si]), se_intercepts = sqrt(diag(V)[si - 1L]),
     vcov_gp = V, vcov_slopes = V[si, si, drop = FALSE], df = Inf,
     sse = ft$deviance, mse = phi, fitted = ft$eta,
-    resid = ft$z - ft$eta, wresid = (ft$z - ft$eta) * sqrt(ft$W), n = n,
+    resid = ft$z - ft$eta, wresid = (ft$z - ft$eta) * sqrt(ft$W), n = n, x = x,
     bounds = c(min(x), tau, max(x)), jump = jump,
     extra_names = colnames(ft$X)[-seq_len(2L + k)], log = TRUE,
     link = if (family == "poisson") "log" else "logit", z = ft$z, W = ft$W,

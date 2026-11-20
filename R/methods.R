@@ -152,7 +152,7 @@ model_selection <- function(object) {
     # residuals (values well below 2 suggest positive autocorrelation); both
     # are undefined for a constant series or an exact fit.
     U <- jp_whiten_mat(f$S)
-    tol <- jp_tiny(U, f$y, f$x)
+    tol <- jp_tiny(U, f$y, f$x, f$extra)
     sst <- sum(qr.resid(qr(jp_apply_whiten(U, rep(1, length(f$y)))),
                         drop(jp_apply_whiten(U, f$y)))^2)
     tab$r_squared <- vapply(f$models, function(mm) {
@@ -405,16 +405,7 @@ predict.joinpoint <- function(object, newdata = NULL, model = "final",
       stop("`newdata` needs the columns ", paste(need, collapse = ", "),
            ".", call. = FALSE)
     }
-    row_cohort <- if (is.null(object$by)) {
-      rep(1L, nrow(newdata))
-    } else {
-      tup <- function(df) {
-        id <- do.call(paste, c(lapply(df, as.character), sep = "\r"))
-        id[!stats::complete.cases(df)] <- NA
-        id
-      }
-      match(tup(newdata[object$by]), tup(object$cohorts[object$by]))
-    }
+    row_cohort <- jp_row_cohort(object, newdata)
   }
   out <- lapply(seq_along(object$fits), function(g) {
     f <- object$fits[[g]]
@@ -464,12 +455,40 @@ predict.joinpoint <- function(object, newdata = NULL, model = "final",
   res
 }
 
+# Display labels of cohorts g: their by-variable values joined by commas.
+# Cohorts whose labels coincide (such as ("A, B", "C") and ("A", "B, C"))
+# get their number appended, so that each label names one cohort in plots,
+# legends and interactive graphics.
 jp_cohort_label <- function(object, g) {
   if (is.null(object$by)) {
-    return("All")
+    return(rep("All", length(g)))
   }
-  paste(vapply(object$cohorts[g, , drop = FALSE], as.character, character(1)),
-        collapse = ", ")
+  all <- do.call(paste, c(lapply(object$cohorts, as.character),
+                          sep = ", "))
+  out <- all[g]
+  dup <- out %in% all[duplicated(all)]
+  out[dup] <- paste0(out[dup], " [", g[dup], "]")
+  out
+}
+
+# Cohort (row of object$cohorts) of each row of `d`, matched on the tuple of
+# by-variable values; NA for missing or unknown keys.
+jp_row_cohort <- function(object, d) {
+  if (is.null(object$by)) {
+    return(rep(1L, nrow(d)))
+  }
+  chr <- function(df) {
+    as.data.frame(lapply(df[object$by], as.character),
+                  stringsAsFactors = FALSE, optional = TRUE)
+  }
+  n <- nrow(d)
+  id <- as.integer(jp_key_factor(rbind(chr(d), chr(object$cohorts))))
+  match(id[seq_len(n)], id[n + seq_len(nrow(object$cohorts))])
+}
+
+# Cohort display label of each row of a result table.
+jp_row_labels <- function(object, d) {
+  jp_cohort_label(object, jp_row_cohort(object, d))
 }
 
 # Labels of the trend statistics: percent changes for log-linear models,
@@ -545,6 +564,9 @@ print.joinpoint <- function(x, digits = 3, ...) {
         " at alpha = ", ctl$alpha_apc, ", ", nm$aapc_abbr, " at alpha = ",
         ctl$alpha_aapc, ".\n", sep = "")
   }
+  cat("Intervals are conditional on the selected number of joinpoints",
+      if (s$family != "gaussian") " and on their estimated locations",
+      ".\n", sep = "")
   invisible(x)
 }
 

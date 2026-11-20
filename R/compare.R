@@ -204,7 +204,7 @@ jp_compare_pair <- function(object, i1, i2, type, alpha, n_perm, seed,
          " joinpoints.", call. = FALSE)
   }
   U <- jp_whiten_mat(S)
-  tol <- jp_tiny(U, y, x)
+  tol <- jp_tiny(U, y, x, extra)
   fstat <- function(r0, r1) (jp_ratio(r0, r1, tol) - 1) * d2 / d1
   stat <- fstat(rss0, rss1)
   ew <- drop(jp_apply_whiten(U, m0$resid))

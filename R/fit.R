@@ -83,7 +83,9 @@ jp_unconstrained <- function(x, y, S, tau, jump = NULL, covars = NULL) {
   p <- qx$rank
   d <- length(xs) - p
   rss <- sum(qr.resid(qx, yw)^2)
-  sigma2 <- if (d > 0) rss / d else NA_real_
+  # A covariance of known scale (see the comparability ratio) is used as it
+  # is; otherwise only relative values are known and the scale is estimated.
+  sigma2 <- if (jp_known_scale(S)) 1 else if (d > 0) rss / d else NA_real_
   V <- matrix(NA_real_, ncol(X), ncol(X))
   if (p > 0 && d > 0) {
     piv <- qx$pivot[seq_len(p)]
@@ -132,9 +134,11 @@ jp_build_model <- function(x, y, S, tau, log, jump = NULL, covars = NULL) {
     se_slopes = se_slope, se_intercepts = se_int, vcov_gp = V,
     vcov_slopes = V[un$slope_index, un$slope_index, drop = FALSE],
     df = un$df, sse = ft$sse,
-    mse = ft$sse / (n - 2 * (k + 1) - length(colnames(extra))),
+    mse = if (jp_known_scale(S)) 1 else {
+      ft$sse / (n - 2 * (k + 1) - length(colnames(extra)))
+    },
     fitted = ft$fitted, resid = ft$resid,
-    wresid = ft$wresid, n = n, bounds = bounds, jump = jump,
+    wresid = ft$wresid, n = n, x = x, bounds = bounds, jump = jump,
     extra_names = colnames(extra), log = log,
     link = if (log) "log" else "identity"
   )

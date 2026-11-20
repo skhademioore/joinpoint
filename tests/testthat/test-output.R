@@ -142,3 +142,106 @@ test_that("printed fits in knitr documents are tables", {
   out <- knitr::knit_print(fit)
   expect_match(as.character(out), "Segment 1", fixed = TRUE)
 })
+
+out_fit <- function(piece = TRUE, empirical = FALSE, custom = FALSE) {
+  x <- 1:20
+  d <- data.frame(x, y = exp(2 + .04 * x + if (piece) {
+    -.2 * pmax(x - 10, 0) + .015 * sin(x)
+  } else {
+    .1 * sin(x)
+  }))
+  ctl <- if (custom) {
+    jp_control(alpha_apc = .1, alpha_aapc = .2, alpha_joinpoint = .01)
+  } else {
+    jp_control(n_resample = 99)
+  }
+  joinpoint(d, x, y, kmax = 1, method = "bic",
+            ci_method = if (empirical) "empirical" else "parametric",
+            control = ctl)
+}
+
+test_that("outputs state the configured confidence levels", {
+  f <- out_fit(custom = TRUE)
+  dir <- temp_dir()
+  jp_report(f, file.path(dir, "levels.Rmd"), interactive = FALSE)
+  src <- readLines(file.path(dir, "levels.Rmd"))
+  expect_false(any(grepl("95% confidence", src, fixed = TRUE)))
+  expect_true(any(grepl("90% confidence intervals for the APCs and 80%", src,
+                        fixed = TRUE)))
+  expect_true(any(grepl("99% confidence intervals", src, fixed = TRUE)))
+  skip_if_not_installed("ggiraph")
+  b <- ggplot2::ggplot_build(autoplot(f, interactive = TRUE))
+  tips <- unlist(lapply(b$data, function(d) d$tooltip), use.names = FALSE)
+  sg <- tips[grepl("Segment ", tips, fixed = TRUE)]
+  expect_true(length(sg) > 0 && all(grepl("90% CI", sg, fixed = TRUE)))
+  jt <- tips[grepl("Joinpoint ", tips, fixed = TRUE)]
+  expect_true(all(grepl("99% CI", jt, fixed = TRUE)))
+})
+
+test_that("reports describe the requested model", {
+  f <- out_fit(piece = FALSE, empirical = TRUE)
+  expect_equal(f$fits[[1]]$k_selected, 0)
+  dir <- temp_dir()
+  jp_report(f, file.path(dir, "m1.Rmd"), model = 1, plots = character(),
+            interactive = FALSE)
+  src <- readLines(file.path(dir, "m1.Rmd"))
+  expect_true("## Joinpoints" %in% src)
+  expect_false(any(grepl("empirical quantile", src, fixed = TRUE)))
+  expect_true(any(grepl("models with 1 joinpoint, as requested", src,
+                        fixed = TRUE)))
+  expect_error(jp_report(f, file.path(dir, "m3.Rmd"), model = 3),
+               "No fitted model")
+  expect_error(jp_report(f, file.path(dir, "m.Rmd"), model = "x"), "model")
+})
+
+test_that("a report of a model without joinpoints renders", {
+  skip_on_cran()
+  skip_if_not(has_pandoc())
+  f <- out_fit()
+  expect_equal(f$fits[[1]]$k_selected, 1)
+  dir <- temp_dir()
+  jp_report(f, file.path(dir, "m0.md"), model = 0, plots = character(),
+            interactive = FALSE)
+  md <- readLines(file.path(dir, "m0.md"))
+  expect_false("## Joinpoints" %in% md)
+})
+
+test_that("titles and file names are written as valid YAML and R", {
+  f <- out_fit()
+  dir <- temp_dir()
+  title <- "Trend C:\\rates \"quoted\"\nsecond line"
+  jp_report(f, file.path(dir, "meta.Rmd"), title = title, plots = character(),
+            interactive = FALSE)
+  if (requireNamespace("rmarkdown", quietly = TRUE)) {
+    expect_equal(rmarkdown::yaml_front_matter(file.path(dir, "meta.Rmd"))$title,
+                 title)
+  }
+  path <- file.path(dir, "quoted \"study\".Rmd")
+  jp_report(f, path, plots = character(), interactive = FALSE)
+  code <- grep("readRDS", readLines(path), value = TRUE, fixed = TRUE)
+  expect_equal(eval(parse(text = sub("fit <- readRDS", "identity", code))),
+               "quoted \"study\"_fit.rds")
+})
+
+test_that("Markdown reports link their figures by relative paths", {
+  skip_on_cran()
+  skip_if_not(has_pandoc())
+  f <- out_fit(piece = FALSE)
+  dir <- temp_dir()
+  jp_report(f, file.path(dir, "rep.md"), plots = "trend", interactive = FALSE)
+  src <- readLines(file.path(dir, "rep.md"))
+  refs <- sub(".*!\\[[^]]*\\]\\(([^)]*)\\).*", "\\1", grep("!\\[", src, value = TRUE))
+  expect_gt(length(refs), 0)
+  expect_false(any(grepl("^/|^[A-Za-z]:|^file:", refs)))
+  expect_true(all(file.exists(file.path(dir, refs))))
+})
+
+test_that("cell contents survive tab separated and LaTeX tables", {
+  dir <- temp_dir()
+  tab <- data.frame(group = c("A\tB", "C\nD"), estimate = c(1, 2))
+  jp_save(tab, file.path(dir, "d.tsv"))
+  back <- utils::read.delim(file.path(dir, "d.tsv"), check.names = FALSE)
+  expect_equal(back$group, tab$group)
+  expect_equal(joinpoint:::jp_tex("a\\b {c} ~"),
+               "a\\textbackslash{}b \\{c\\} \\textasciitilde{}")
+})

@@ -109,3 +109,70 @@ test_that("Monte Carlo ties count whatever the sign of the statistic", {
 test_that("seeds near the integer limit work for every cohort", {
   expect_false(is.na(joinpoint:::jp_cohort_seed(1500000000L, 2L, "vary")))
 })
+
+test_that("a dominant hinge leaves the later joinpoints and profile exact", {
+  x <- 1:30
+  y <- 1e8 * pmax(x - 10, 0) + 10 * pmax(x - 20, 0) + .01 * sin(x)
+  m <- one(L(data.frame(x, y), kmin = 2, kmax = 2, method = "bic"))$models[["2"]]
+  cf <- utils::combn(3:28, 2)
+  cf <- cf[, cf[2, ] - cf[1, ] >= 3, drop = FALSE]
+  oracle <- apply(cf, 2, function(t) {
+    sum(lm.fit(cbind(1, x, pmax(x - t[1], 0), pmax(x - t[2], 0)), y)$residuals^2)
+  })
+  expect_equal(m$tau, cf[, which.min(oracle)])
+  expect_lt(abs(m$sse - min(oracle)), 1e-5)
+  expect_lt(abs(min(m$profile) - min(oracle)), 1e-5)
+})
+
+test_that("a large covariate component does not change the selection", {
+  x <- 1:30
+  z <- sin(.7 * x)
+  base <- 10 * pmax(x - 15, 0) + .1 * cos(x)
+  for (w in c("none", "se", "full")) {
+    fit <- function(a) {
+      d <- data.frame(x, y = base + a * z, z, s = seq(.5, 1.5, length.out = 30))
+      args <- list(d, quote(x), quote(y), log = FALSE, type = "other",
+                   kmax = 1, method = "bic", ci_method = "parametric",
+                   covariates = ~ z)
+      if (w == "se") args$se <- quote(s)
+      if (w == "full") args$vcov <- outer(d$s, d$s) * .5^abs(outer(x, x, "-"))
+      one(do.call(joinpoint, args))
+    }
+    f0 <- fit(0)
+    f1 <- fit(1e7)
+    expect_equal(f1$k_selected, f0$k_selected, info = w)
+    expect_equal(diff(f1$criteria$bic), diff(f0$criteria$bic),
+                 tolerance = 1e-5, info = w)
+  }
+})
+
+test_that("permutation evidence ignores a large covariate component", {
+  skip_on_cran()
+  x <- 1:20
+  z <- sin(.7 * x)
+  base <- 10 * pmax(x - 10, 0) + .1 * cos(x)
+  fit <- function(a) {
+    one(L(data.frame(x, y = base + a * z, z), kmax = 1,
+          method = "permutation", covariates = ~ z,
+          control = jp_control(n_perm = 199)))
+  }
+  f0 <- fit(0)
+  f1 <- fit(1e7)
+  expect_equal(f1$k_selected, f0$k_selected)
+  expect_equal(f1$permutation$table$p_value, f0$permutation$table$p_value)
+})
+
+test_that("the level of the response does not decide whether a slope is zero", {
+  x <- 1:20
+  y <- 1e-6 * x + 1e-8 * sin(x)
+  fit <- function(a) {
+    apc(joinpoint(data.frame(x, y = y + a), x, y, log = FALSE, type = "other",
+                  kmax = 0, method = "bic",
+                  control = jp_control(n_resample = 499)))
+  }
+  a0 <- fit(0)
+  a1 <- fit(1e8)
+  expect_gt(a1$lower, 0)
+  expect_equal(a1$p_value, a0$p_value)
+  expect_true(a1$significant)
+})

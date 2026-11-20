@@ -29,7 +29,10 @@ jp_apc_table <- function(model, alpha, ci_method, eq = NULL) {
     out$lower <- jp_pct(q[1L, ], log)
     out$upper <- jp_pct(q[2L, ], log)
     out$statistic <- NA_real_
-    out$p_value <- apply(eq$slopes, 2L, jp_eq_pvalue, tol = jp_slope_tol(model))
+    tol <- jp_slope_tol(model, model$x, seq_len(k + 1L))
+    out$p_value <- vapply(seq_len(k + 1L), function(j) {
+      jp_eq_pvalue(eq$slopes[, j], tol[j])
+    }, numeric(1))
   } else {
     tq <- if (!is.na(df) && df > 0) stats::qt(1 - alpha / 2, df) else NA
     out$lower <- jp_pct(b - tq * se, log)
@@ -73,7 +76,7 @@ jp_aapc_table <- function(model, ranges, alpha, ci_method, eq = NULL) {
       row$lower <- jp_pct(q[1L], log)
       row$upper <- jp_pct(q[2L], log)
       row$statistic <- NA_real_
-      row$p_value <- jp_eq_pvalue(th, jp_slope_tol(model))
+      row$p_value <- jp_eq_pvalue(th, jp_slope_tol(model, model$x))
       row$se_log <- stats::sd(th, na.rm = TRUE)
     } else {
       # Only segments inside the range enter the variance.

@@ -47,7 +47,7 @@ jp_permutation_select <- function(x, S, models, cand, cons, kmin, kmax,
                                   n_exceed = NULL) {
   ks <- vapply(models, `[[`, numeric(1), "k")
   U <- jp_whiten_mat(S)
-  tol <- jp_tiny(U, models[[1L]]$fitted + models[[1L]]$resid, x)
+  tol <- jp_tiny(U, models[[1L]]$fitted + models[[1L]]$resid, x, extra)
   a <- kmin
   b <- kmax
   rows <- list()
@@ -125,20 +125,22 @@ jp_ratio <- function(sse0, sse1, tol = 0) {
 }
 
 # Sums of squares below this tolerance are numerically zero: a small
-# fraction of the whitened sum of squares about the (generalized least
-# squares) mean, or the rounding error of the response when that is zero.
-# It does not change when a constant is added to the response.
-jp_tiny <- function(U, y, x = NULL) {
+# fraction of the whitened sum of squares left by the design common to all
+# models, or the rounding error of the response when that is zero. It does
+# not change when a component of the common design (a constant, a linear
+# trend, a covariate or a jump) is added to the response.
+jp_tiny <- function(U, y, x = NULL, extra = NULL) {
   # The scale of the numerical zero is the variation left after the base
-  # model (intercept and, given `x`, slope) that every candidate contains,
-  # so that a large common trend does not swallow the differences between
-  # candidates.
+  # model that every candidate contains (intercept, slope given `x`, and the
+  # `extra` columns of covariates and jumps), so that a large common
+  # component does not swallow the differences between candidates.
   yw <- drop(jp_apply_whiten(U, y))
   B <- if (is.null(x) || !isTRUE(stats::sd(x) > 0)) {
     matrix(1, length(y), 1L)
   } else {
     cbind(1, (x - mean(x)) / stats::sd(x))
   }
+  if (!is.null(extra)) B <- cbind(B, extra)
   dev <- qr.resid(qr(jp_apply_whiten(U, B)), yw)
   max(1e-10 * sum(dev^2), 100 * length(y) * (.Machine$double.eps * max(abs(yw)))^2,
       .Machine$double.xmin)
@@ -223,11 +225,36 @@ jp_eq_pvalue <- function(theta, tol = 0) {
   min(1, 2 * min(sum(theta < 0 | zero), sum(theta > 0 | zero)) / B)
 }
 
-# Roundoff level of a slope of the model: estimates this small cannot be told
-# from zero.
-jp_slope_tol <- function(model) {
+# Rounding error bound of the least squares slopes of the model, one per
+# segment (`segment = NULL`: over the whole range, for AAPCs). A slope is a
+# linear combination sum(c_i y_i) of the responses of its segment, with
+# c_i = (x_i - mean(x)) / sum((x - mean(x))^2), so storing and resampling
+# the responses in double precision perturbs it by at most a small multiple
+# of eps * sum(|c_i| |y_i|). Resampled estimates within this bound of zero
+# are ties at zero (as for an exactly flat series); a slope that is large
+# against the bound is resolved whatever the level (intercept) of the
+# response.
+jp_slope_tol <- function(model, x = NULL, segment = NULL) {
   y <- model$fitted + model$resid
-  span <- diff(range(model$bounds))
-  if (!is.finite(span) || span <= 0) span <- 1
-  1e3 * .Machine$double.eps * max(abs(y), na.rm = TRUE) / span
+  if (is.null(x)) {
+    x <- seq(min(model$bounds), max(model$bounds), length.out = length(y))
+  }
+  bound <- function(i) {
+    if (sum(i) < 2L) {
+      return(0)
+    }
+    xc <- x[i] - mean(x[i])
+    sxx <- sum(xc^2)
+    if (!is.finite(sxx) || sxx <= 0) {
+      return(0)
+    }
+    64 * .Machine$double.eps * sum(abs(xc) * abs(y[i])) / sxx
+  }
+  if (is.null(segment)) {
+    return(bound(rep(TRUE, length(x))))
+  }
+  b <- model$bounds
+  vapply(segment, function(j) {
+    bound(x >= b[j] & x <= b[j + 1L])
+  }, numeric(1))
 }

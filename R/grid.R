@@ -109,10 +109,87 @@ jp_grid_search <- function(x, Y, W, cand, cons, kmax, extra = NULL,
   Hw <- wh(outer(u, (cand - ctr) / scl, function(a, b) pmax(a - b, 0)))
   Hr <- qr.resid(qb, Hw)
   Hr[, colSums(Hr^2) <= 1e-14 * colSums(Hw^2)] <- 0
-  jp_grid_cpp(
+  res <- jp_grid_cpp(
     crossprod(Hr), crossprod(Yr, Hr), yy, 0L, as.integer(kmax),
     cons$first_ok, cons$last_ok, cons$next_min, profile
   )
+  # The compiled search computes each SSE as a difference of sums of
+  # squares, which loses the digits of an SSE far smaller than the
+  # variation left by the base model (a dominant hinge, an exact fit). Such
+  # responses are searched again from the residual vectors themselves.
+  thr <- 1e6 * .Machine$double.eps * yy
+  bad <- which(rowSums(res$sse < thr, na.rm = TRUE) > 0)
+  if (length(bad)) {
+    cost <- sum(jp_node_counts(cons, kmax)$nodes) * nrow(Yr)
+    if (cost * length(bad) > 2e8) bad <- bad[bad == 1L]
+  }
+  if (length(bad)) {
+    st <- jp_grid_stable(Hr, Yr[, bad, drop = FALSE], cons, kmax,
+                         profile && bad[1L] == 1L)
+    res$sse[bad, ] <- st$sse
+    for (k in seq_len(kmax)) res$idx[[k + 1L]][bad, ] <- st$idx[[k + 1L]]
+    if (profile && bad[1L] == 1L) res$profile <- st$profile
+  }
+  res
+}
+
+# Exhaustive search from residual vectors: depth first, each added hinge is
+# projected out of the responses and of the later candidate columns
+# (Gram-Schmidt, applied twice), so every SSE is the sum of squares of an
+# actual residual vector. Slower than the compiled search on cross
+# products, it keeps the SSE accurate however small it is against the
+# responses. `Hr` and `Yr` are the whitened hinge columns and responses
+# already projected off the base model; the result has the form of
+# jp_grid_cpp().
+jp_grid_stable <- function(Hr, Yr, cons, kmax, profile = FALSE) {
+  m <- ncol(Hr)
+  nd <- ncol(Yr)
+  hn <- colSums(Hr^2)
+  best <- matrix(Inf, nd, kmax + 1L)
+  best[, 1L] <- colSums(Yr^2)
+  idx <- c(list(matrix(integer(0), nd, 0L)),
+           lapply(seq_len(kmax), function(k) matrix(NA_integer_, nd, k)))
+  prof <- c(list(NULL), lapply(seq_len(kmax), function(k) {
+    if (profile) matrix(Inf, m, k)
+  }))
+  proj <- function(q, A) {
+    A <- A - q %*% crossprod(q, A)
+    A - q %*% crossprod(q, A)
+  }
+  visit <- function(R, H, k, from, path) {
+    for (j in seq.int(from, length.out = max(0L, m - from + 1L))) {
+      if (k == 0L && !cons$first_ok[j]) next
+      h <- H[, j]
+      nh <- sum(h^2)
+      if (!(hn[j] > 0) || !(nh > 1e-10 * hn[j])) next
+      q <- h / sqrt(nh)
+      R1 <- proj(q, R)
+      p1 <- c(path, j)
+      k1 <- k + 1L
+      if (cons$last_ok[j]) {
+        sse <- colSums(R1^2)
+        better <- sse < best[, k1 + 1L]
+        if (any(better)) {
+          best[better, k1 + 1L] <<- sse[better]
+          idx[[k1 + 1L]][better, ] <<- matrix(p1, sum(better), k1,
+                                              byrow = TRUE)
+        }
+        if (profile) {
+          cell <- cbind(p1, seq_len(k1))
+          prof[[k1 + 1L]][cell] <<- pmin(prof[[k1 + 1L]][cell], sse[1L])
+        }
+      }
+      nx <- cons$next_min[j]
+      if (k1 < kmax && nx < m) {
+        rest <- (nx + 1L):m
+        H1 <- H
+        H1[, rest] <- proj(q, H[, rest, drop = FALSE])
+        visit(R1, H1, k1, nx + 1L, p1)
+      }
+    }
+  }
+  visit(Yr, Hr, 0L, 1L, integer(0))
+  list(sse = best, idx = idx, profile = prof)
 }
 
 # Configurations of the exhaustive search at each depth 1..kmax: `nodes`

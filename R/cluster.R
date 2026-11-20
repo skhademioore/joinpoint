@@ -95,8 +95,10 @@ jp_parallel_fit <- function(x, DC, D2C, P, cols, method, ctrl, kmin, kmax,
 #'   (for example `ci_method`).
 #' @return An object of class `jp_cluster` with the compressed age groups,
 #'   the cluster selection table, the final clusters, the MADWD steps, the
-#'   cluster rates and `fit`, the [joinpoint()] fit of the cluster age
-#'   adjusted rates.
+#'   cluster rates, `fit`, the [joinpoint()] fit of the cluster age
+#'   adjusted rates, and `settings`, the settings of the clustering
+#'   (standardization, minimum count, maximum clusters, joinpoint limits and
+#'   selection methods).
 #' @examples
 #' set.seed(1)
 #' ages <- c("40-49", "50-59", "60-69", "70-79")
@@ -208,7 +210,11 @@ jp_cluster <- function(data, x, count, population, age, standard, by = NULL,
   structure(list(
     compression = tab("compression"), selection = tab("selection"),
     clusters = tab("clusters"), madwd = tab("madwd"), rates = rates,
-    fit = fit
+    fit = fit,
+    settings = list(standardize = standardize, min_count = min_count,
+                    max_clusters = max_clusters, kmin = kmin, kmax = kmax,
+                    method = method, final_method = final_method,
+                    rate_per = rate_per)
   ), class = "jp_cluster")
 }
 
@@ -293,12 +299,19 @@ jp_cluster_one <- function(x, C, P, D, std, ages, min_count, compression,
     if (a[1L] == a[2L]) ages[a[1L]] else paste(ages[a[1L]], ages[a[2L]], sep = " to ")
   }
   N <- nt * G
+  # Residual sums of squares below the rounding error of the weighted log
+  # rates are numerically zero: partitions that all fit exactly are tied,
+  # and the penalty chooses the fewest clusters instead of rounding error.
+  yw <- log(DCc / Pc) / sqrt(D2Cc / DCc^2)
+  yw <- yw[is.finite(yw)]
+  qtiny <- max(100 * N * (.Machine$double.eps * max(abs(yw), 0))^2,
+               .Machine$double.xmin)
   sel <- do.call(rbind, lapply(seq_len(M), function(m) {
     pt <- if (m == 1L) list(seq_len(G)) else partition(m)
     S <- sum(vapply(pt, function(b) kb[min(b), max(b)], numeric(1)))
     p <- m - 1 + 2 * S + m + G
     data.frame(clusters = m, Q = Q[m, G], joinpoints = S, parameters = p,
-               bic = log(Q[m, G] / N) + p * log(N) / N,
+               bic = log(max(Q[m, G], qtiny) / N) + p * log(N) / N,
                partition = paste(vapply(pt, blk_lab, ""), collapse = " | "))
   }))
   m_best <- sel$clusters[which.min(sel$bic)]

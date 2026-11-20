@@ -87,8 +87,10 @@ clusters.}
 \value{
 An object of class \code{jp_cluster} with the compressed age groups,
 the cluster selection table, the final clusters, the MADWD steps, the
-cluster rates and \code{fit}, the \code{\link[=joinpoint]{joinpoint()}} fit of the cluster age
-adjusted rates.
+cluster rates, \code{fit}, the \code{\link[=joinpoint]{joinpoint()}} fit of the cluster age
+adjusted rates, and \code{settings}, the settings of the clustering
+(standardization, minimum count, maximum clusters, joinpoint limits and
+selection methods).
 }
 \description{
 Clusters contiguous age groups whose trends are as parallel as possible

@@ -51,6 +51,10 @@ jp_cov_factors <- function(S) {
   jp_cov_cache
 }
 
+# TRUE for a covariance matrix whose scale is known (it is not multiplied by
+# an estimated residual variance).
+jp_known_scale <- function(S) isTRUE(attr(S, "known_scale"))
+
 jp_weights <- function(S) {
   if (is.matrix(S)) jp_cov_factors(S)$W else 1 / S
 }
@@ -80,12 +84,30 @@ jp_unwhiten <- function(U, A) {
 # maximum number of joinpoints fitted under independence (Kim et al. 2000,
 # section 2.3). Residuals are standardized by the heteroscedastic weights
 # first. The estimate is truncated to (-0.99, 0.99).
-jp_estimate_rho <- function(wresid, tol = 0) {
+#
+# With excluded observations the included ones are `gaps` time steps apart
+# (positions in the time sequence), and their correlation is rho^gap, the
+# model used to build the covariance. rho is then the maximum of the
+# Gaussian AR(1) likelihood of the residuals at these gaps (profiled over
+# the innovation variance). When every gap is even, rho and -rho give the
+# same covariance of the included observations, and the nonnegative value
+# is used.
+jp_estimate_rho <- function(wresid, tol = 0, gaps = NULL) {
   e <- wresid - mean(wresid)
   n <- length(e)
   if (n < 3 || sum(e^2) <= tol) {
     return(0)
   }
-  rho <- sum(e[-1] * e[-n]) / sum(e^2)
-  max(min(rho, 0.99), -0.99)
+  if (is.null(gaps) || all(gaps == 1)) {
+    rho <- sum(e[-1] * e[-n]) / sum(e^2)
+    return(max(min(rho, 0.99), -0.99))
+  }
+  nll <- function(r) {
+    rg <- r^gaps
+    v <- 1 - rg^2
+    ss <- e[1L]^2 + sum((e[-1L] - rg * e[-n])^2 / v)
+    n * log(ss / n) + sum(log(v))
+  }
+  lower <- if (all(gaps %% 2 == 0)) 0 else -0.99
+  stats::optimize(nll, c(lower, 0.99))$minimum
 }
