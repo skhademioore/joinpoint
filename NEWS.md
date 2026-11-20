@@ -1,7 +1,5 @@
 # joinpoint 0.1.0
 
-First version.
-
 ## Models
 
 * `joinpoint()` fits joinpoint regression models to one or more series
@@ -45,9 +43,10 @@ First version.
   `coef()`, `vcov()`, `fitted()`, `residuals()`, `predict()` and
   `as.data.frame()` methods, and `jp_export()` for delimited text files.
 * `ggplot2` graphics: `autoplot()` trend figures with segment labels placed to
-  avoid each other and the curves, `plot_apc()`, `plot_aapc()`,
-  `plot_models()`, `plot_selection()`, `plot_residuals()`, comparison plots,
-  `theme_joinpoint()` and color scales.
+  avoid each other, the curves, the points and their error bars;
+  `plot_apc()`, `plot_aapc()`, `plot_models()`, `plot_selection()`,
+  `plot_residuals()`, comparison plots, `theme_joinpoint()` and color
+  scales.
 
 ## Data and documentation
 

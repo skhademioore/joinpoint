@@ -341,14 +341,24 @@ autoplot.joinpoint <- function(object, model = "final",
                                       drop = TRUE), function(d) {
       on <- panel(pts) == panel(d)[1L]
       cv <- curve[panel(curve) == panel(d)[1L] & !is.na(curve$fit), ]
-      jp_place_labels(d, range(pts$x[on]),
-                      range(tf(c(pts$y[on], cv$fit)), na.rm = TRUE), tf,
-                      cv$x, tf(cv$fit), cw = 1.1 * 0.065 * nc / 6.9,
+      # The points and their error bars are obstacles too, and the error
+      # bars widen the panel's y range.
+      ob <- pts[on, ]
+      k <- if (error_bars) seq(-1, 1, by = 0.25) else 0
+      se <- ifelse(is.na(ob$se), 0, ob$se)
+      ox <- rep(ob$x, each = length(k))
+      oy <- suppressWarnings(tf(rep(ob$y, each = length(k)) +
+                                  rep(se, each = length(k)) * 1.96 * k))
+      ok <- is.finite(oy)
+      jp_place_labels(d, range(ob$x),
+                      range(c(oy[ok], tf(cv$fit)), na.rm = TRUE), tf,
+                      c(cv$x, ox[ok]), c(tf(cv$fit), oy[ok]),
+                      cw = 1.1 * 0.065 * nc / 6.9,
                       lh = (1 + 2 * pad) * 0.14 * ceiling(np / nc) / 3.8)
     }))
     g <- g + ggplot2::geom_label(
       data = sg, ggplot2::aes(y = .data$label_y, label = .data$label,
-                              hjust = .data$hjust),
+                              hjust = .data$hjust, vjust = .data$vjust),
       color = jp_ink[["secondary"]], size = 3,
       fill = grDevices::adjustcolor("white", 0.8), border.colour = NA,
       label.padding = ggplot2::unit(1.5, "pt")
@@ -399,12 +409,15 @@ autoplot.joinpoint <- function(object, model = "final",
 
 # Positions of the segment labels of one panel, in panel fractions: each
 # label goes next to the middle of its segment on the side facing the middle
-# of the panel, else on the other side, else stacked further out, at the
-# first position that overlaps neither a label already placed nor a fitted
-# curve (`cx`, `cy`); a two-line label that fits nowhere is cut to its
-# first line, and a label that still fits nowhere takes the position of
-# least overlap. `cw` and `lh` are the width of a character and the height
-# of a line as fractions of the panel.
+# of the panel, just clear of the obstacles under its span (`cx`, `cy`: the
+# fitted curves, the points and their error bars), else on the other side,
+# else stacked further out, at the first position that overlaps neither a
+# label already placed nor an obstacle; a two-line label that fits nowhere is cut to its first line, and a
+# label that still fits nowhere takes the position of least overlap. `cw`
+# and `lh` are the width of a character and the height of a line as
+# fractions of the panel. Each label is anchored at its edge nearest the
+# curve, so a label drawn taller than estimated (a shorter figure) grows away
+# from the curve rather than onto it.
 jp_place_labels <- function(d, xr, yr, tf, cx, cy, cw, lh) {
   d <- d[order(d$x), ]
   # A flat series has no y range; give it the unit range ggplot2 draws.
@@ -423,23 +436,34 @@ jp_place_labels <- function(d, xr, yr, tf, cx, cy, cw, lh) {
       h <- nl * lh
       sides <- if (Y[i] < 0.5) c(1, -1) else c(-1, 1)
       # Candidates: nearest first, on either side, aligned as given or
-      # shifted half a label to the left or right.
-      cand <- expand.grid(shift = c(0, -0.5, 0.5), side = sides, level = 0:5)
+      # shifted half a label to the left or right; at each level a fixed
+      # offset from the segment, then just clear of every obstacle under
+      # (or over) the label's span.
+      cand <- expand.grid(shift = c(0, -0.5, 0.5), side = sides,
+                          clear = c(FALSE, TRUE), level = 0:5)
       cand$hj <- pmin(1, pmax(0, d$hjust[i] - cand$shift))
       cand$left <- X[i] - cand$hj * w
-      cand$lo <- ifelse(cand$side > 0, Y[i] + 0.02 + cand$level * h,
-                        Y[i] - 0.02 - (cand$level + 1) * h)
+      edge <- mapply(function(l, side, clear) {
+        if (!clear) return(Y[i] + side * 0.03)
+        on <- CX > l - cw / 2 & CX < l + w + cw / 2
+        if (side > 0) max(Y[i] + 0.03, CY[on] + 0.02)
+        else min(Y[i] - 0.03, CY[on] - 0.02)
+      }, cand$left, cand$side, cand$clear)
+      cand$lo <- ifelse(cand$side > 0, edge + cand$level * h,
+                        edge - (cand$level + 1) * h)
       inside <- cand$lo > -0.18 & cand$lo + h < 1.18 &
         cand$left > -0.02 & cand$left + w < 1.02
       if (any(inside)) cand <- cand[inside, ]
-      # Overlap with placed labels (area) and with the curves (points).
+      # Overlap with placed labels (area) and with the obstacles (points,
+      # with a small margin so that no label grazes a mark).
       clash <- mapply(function(l, lo) {
         sum(pmax(0, pmin(l + w, placed[, 2L]) - pmax(l, placed[, 1L])) *
               pmax(0, pmin(lo + h, placed[, 4L]) - pmax(lo, placed[, 3L]))) +
-          1e-3 * sum(CX > l & CX < l + w & CY > lo & CY < lo + h)
+          1e-3 * sum(CX > l & CX < l + w & CY > lo - 0.01 &
+                       CY < lo + h + 0.01)
       }, cand$left, cand$lo)
       b <- which.min(clash)
-      list(nl = nl, clash = clash[b], hj = cand$hj[b],
+      list(nl = nl, clash = clash[b], hj = cand$hj[b], up = cand$side[b] > 0,
            box = c(cand$left[b], cand$left[b] + w, cand$lo[b], h))
     }
     sp <- spot(length(lines))
@@ -451,7 +475,8 @@ jp_place_labels <- function(d, xr, yr, tf, cx, cy, cw, lh) {
     d$hjust[i] <- sp$hj
     d$label[i] <- paste(lines[seq_len(sp$nl)], collapse = "\n")
     placed <- rbind(placed, c(box[1:3], box[3L] + box[4L]))
-    mid[i] <- box[3L] + box[4L] / 2
+    d$vjust[i] <- if (sp$up) 0 else 1
+    mid[i] <- if (sp$up) box[3L] else box[3L] + box[4L]
   }
   y <- yr[1L] + mid * diff(yr)
   d$label_y <- if (identical(tf, log10)) 10^y else y

@@ -78,6 +78,28 @@ test_that("flat series can be plotted", {
   expect_silent(ggplot2::ggplot_build(autoplot(flat, log_y = TRUE)))
 })
 
+test_that("segment labels clear the error bars under them", {
+  mb <- unique(ontario_bmi[c("year", "births", "mean_bmi", "sd_bmi")])
+  mb$se <- mb$sd_bmi / sqrt(mb$births)
+  fit <- joinpoint(mb, year, mean_bmi, se = se, log = FALSE, kmax = 2,
+                   method = "bic", ci_method = "parametric")
+  p <- autoplot(fit, error_bars = TRUE, labels = "ci")
+  geoms <- vapply(p$layers, function(l) class(l$geom)[1L], "")
+  lab <- ggplot2::layer_data(p, which(geoms == "GeomLabel"))
+  # Labels are anchored at the edge facing the curve.
+  expect_true(all(lab$vjust %in% c(0, 1)))
+  for (i in seq_len(nrow(lab))) {
+    span <- lab$x[i] + c(-lab$hjust[i], 1 - lab$hjust[i]) * 1.5
+    under <- mb$year >= span[1L] & mb$year <= span[2L]
+    expect_true(any(under))
+    if (lab$vjust[i] == 0) {
+      expect_gt(lab$y[i], max(mb$mean_bmi[under] + 1.96 * mb$se[under]))
+    } else {
+      expect_lt(lab$y[i], min(mb$mean_bmi[under] - 1.96 * mb$se[under]))
+    }
+  }
+})
+
 test_that("results export to text files", {
   fit <- joinpoint(subset(us_mortality, cause == "Cancer"), year, rate,
                    kmax = 1, ci_method = "parametric")
