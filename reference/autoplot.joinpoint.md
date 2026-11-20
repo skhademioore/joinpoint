@@ -24,6 +24,7 @@ autoplot(
   log_y = FALSE,
   digits = NULL,
   ncol = NULL,
+  interactive = FALSE,
   ...
 )
 
@@ -97,6 +98,12 @@ plot(x, ...)
 - ncol:
 
   Number of facet columns.
+
+- interactive:
+
+  Draw the layers with the interactive versions of the `ggiraph` package
+  (tooltips and linked highlighting); show the result with
+  [`jp_interactive()`](https://skhademioore.github.io/joinpoint/reference/jp_interactive.md).
 
 - ...:
 

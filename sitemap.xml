@@ -14,6 +14,7 @@
 <url><loc>https://skhademioore.github.io/joinpoint/articles/joinpoint.html</loc></url>
 <url><loc>https://skhademioore.github.io/joinpoint/articles/model-selection.html</loc></url>
 <url><loc>https://skhademioore.github.io/joinpoint/articles/published-analysis.html</loc></url>
+<url><loc>https://skhademioore.github.io/joinpoint/articles/reports.html</loc></url>
 <url><loc>https://skhademioore.github.io/joinpoint/articles/uncertainty.html</loc></url>
 <url><loc>https://skhademioore.github.io/joinpoint/authors.html</loc></url>
 <url><loc>https://skhademioore.github.io/joinpoint/index.html</loc></url>
@@ -31,8 +32,12 @@
 <url><loc>https://skhademioore.github.io/joinpoint/reference/jp_compare.html</loc></url>
 <url><loc>https://skhademioore.github.io/joinpoint/reference/jp_control.html</loc></url>
 <url><loc>https://skhademioore.github.io/joinpoint/reference/jp_export.html</loc></url>
+<url><loc>https://skhademioore.github.io/joinpoint/reference/jp_interactive.html</loc></url>
+<url><loc>https://skhademioore.github.io/joinpoint/reference/jp_report.html</loc></url>
+<url><loc>https://skhademioore.github.io/joinpoint/reference/jp_save.html</loc></url>
 <url><loc>https://skhademioore.github.io/joinpoint/reference/jp_table.html</loc></url>
 <url><loc>https://skhademioore.github.io/joinpoint/reference/jump_estimates.html</loc></url>
+<url><loc>https://skhademioore.github.io/joinpoint/reference/knit_print.joinpoint.html</loc></url>
 <url><loc>https://skhademioore.github.io/joinpoint/reference/model_estimates.html</loc></url>
 <url><loc>https://skhademioore.github.io/joinpoint/reference/model_selection.html</loc></url>
 <url><loc>https://skhademioore.github.io/joinpoint/reference/ontario_bmi.html</loc></url>

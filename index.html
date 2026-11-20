@@ -49,6 +49,7 @@
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles">
 <li><a class="dropdown-item" href="articles/published-analysis.html">Reproducing a published analysis: prepregnancy BMI in Ontario</a></li>
+    <li><a class="dropdown-item" href="articles/reports.html">Sharing results: tables, figures, reports and interactive graphics</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Methods</h6></li>
     <li><a class="dropdown-item" href="articles/model-selection.html">How many joinpoints? Model selection</a></li>
@@ -91,7 +92,7 @@
 </div>
 <!-- badges: start -->
 
-<p><strong><em>joinpoint</em></strong> fits joinpoint (segmented line) regression models for trend analysis (Kim et al. 2000). It finds the points in time at which a trend changes, summarizes each period by its annual percent change (APC), fixed periods by the average annual percent change (AAPC), and draws publication quality figures with ggplot2.</p>
+<p><strong><em>joinpoint</em></strong> fits joinpoint (segmented line) regression models for trend analysis (Kim et al. 2000). It finds the points in time at which a trend changes, summarizes each period by its annual percent change (APC), fixed periods by the average annual percent change (AAPC), and draws publication quality figures with ggplot2, static or interactive. Tables, figures and complete reports are saved for manuscripts in Word, LaTeX, PDF, HTML, R Markdown and Quarto.</p>
 <p>It covers the classical least squares joinpoint model with its error models, model selection rules and confidence intervals, together with the extensions of the literature: Poisson and logistic joinpoint models, continuous joinpoints, covariates, jump and comparability ratio models for coding changes, pairwise comparisons of trends, and clustering of age groups.</p>
 <p>Documentation, articles and the function reference are on the package website: <a href="https://skhademioore.github.io/joinpoint/" class="uri">https://skhademioore.github.io/joinpoint/</a>.</p>
 <div class="float">
@@ -131,7 +132,12 @@
 <span></span>
 <span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/autoplot.html" class="external-link">autoplot</a></span><span class="op">(</span><span class="va">fit</span>, color_by <span class="op">=</span> <span class="st">"trend"</span>, log_y <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
 <span><span class="fu"><a href="reference/plot_apc.html">plot_apc</a></span><span class="op">(</span><span class="va">fit</span><span class="op">)</span></span>
-<span><span class="fu"><a href="reference/plot_apc.html">plot_aapc</a></span><span class="op">(</span><span class="va">fit</span><span class="op">)</span></span></code></pre></div>
+<span><span class="fu"><a href="reference/plot_apc.html">plot_aapc</a></span><span class="op">(</span><span class="va">fit</span><span class="op">)</span></span>
+<span><span class="fu"><a href="reference/jp_interactive.html">jp_interactive</a></span><span class="op">(</span><span class="va">fit</span><span class="op">)</span>      <span class="co"># interactive figure with tooltips and zoom</span></span>
+<span></span>
+<span><span class="fu"><a href="reference/jp_save.html">jp_save</a></span><span class="op">(</span><span class="fu"><a href="reference/jp_table.html">jp_table</a></span><span class="op">(</span><span class="va">fit</span><span class="op">)</span>, <span class="st">"trends.docx"</span><span class="op">)</span>      <span class="co"># Word table (also .tex, .md, .csv, ...)</span></span>
+<span><span class="fu"><a href="reference/jp_save.html">jp_save</a></span><span class="op">(</span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/autoplot.html" class="external-link">autoplot</a></span><span class="op">(</span><span class="va">fit</span><span class="op">)</span>, <span class="st">"trends.png"</span><span class="op">)</span>       <span class="co"># figure (also .pdf, .svg, .tex, ...)</span></span>
+<span><span class="fu"><a href="reference/jp_report.html">jp_report</a></span><span class="op">(</span><span class="va">fit</span>, <span class="st">"report.qmd"</span><span class="op">)</span>               <span class="co"># Quarto report (also .Rmd, .html, .docx, .pdf)</span></span></code></pre></div>
 </div>
 <div class="section level2">
 <h2 id="what-is-covered">What is covered<a class="anchor" aria-label="anchor" href="#what-is-covered"></a>
@@ -270,6 +276,20 @@
 </td>
 <td></td>
 </tr>
+<tr>
+<td>Interactive graphics with tooltips, linked highlighting and zoom</td>
+<td>
+<code><a href="reference/jp_interactive.html">jp_interactive()</a></code>, <code>interactive = TRUE</code>
+</td>
+<td></td>
+</tr>
+<tr>
+<td>Tables, figures and reports for Word, LaTeX, PDF, HTML, R Markdown and Quarto</td>
+<td>
+<code><a href="reference/jp_save.html">jp_save()</a></code>, <code><a href="reference/jp_report.html">jp_report()</a></code>
+</td>
+<td></td>
+</tr>
 </tbody>
 </table>
 <p>Not covered: Bayesian joinpoint models and joinpoint models for survival or complex survey data.</p>
@@ -327,6 +347,12 @@
 <td>Clustering of contiguous age groups; direct age adjustment</td>
 </tr>
 <tr>
+<td>
+<code><a href="reference/jp_save.html">jp_save()</a></code>, <code><a href="reference/jp_report.html">jp_report()</a></code>
+</td>
+<td>Tables, figures and complete reports in document formats</td>
+</tr>
+<tr>
 <td><code><a href="reference/jp_export.html">jp_export()</a></code></td>
 <td>Every result table as delimited text</td>
 </tr>
@@ -335,6 +361,10 @@
 <code><a href="https://ggplot2.tidyverse.org/reference/autoplot.html" class="external-link">autoplot()</a></code>, <code><a href="reference/plot_apc.html">plot_apc()</a></code>, <code><a href="reference/plot_apc.html">plot_aapc()</a></code>, <code><a href="reference/plot_models.html">plot_models()</a></code>, <code><a href="reference/plot_selection.html">plot_selection()</a></code>, <code><a href="reference/plot_residuals.html">plot_residuals()</a></code>
 </td>
 <td>Figures</td>
+</tr>
+<tr>
+<td><code><a href="reference/jp_interactive.html">jp_interactive()</a></code></td>
+<td>Interactive figures</td>
 </tr>
 <tr>
 <td>
@@ -364,7 +394,9 @@
 <li>
 <a href="https://skhademioore.github.io/joinpoint/articles/joinpoint.html"><code>vignette("joinpoint")</code></a>: a century of United States mortality, from a first fit to a manuscript table</li>
 <li>
-<a href="https://skhademioore.github.io/joinpoint/articles/published-analysis.html"><code>vignette("published-analysis")</code></a>: reproducing a published analysis of prepregnancy BMI in Ontario, quantity by quantity</li>
+<a href="https://skhademioore.github.io/joinpoint/articles/published-analysis.html"><code>vignette("published-analysis")</code></a>: reproducing a published analysis of prepregnancy BMI in Ontario, quantity by quantity, with interactive figures</li>
+<li>
+<a href="https://skhademioore.github.io/joinpoint/articles/reports.html"><code>vignette("reports")</code></a>: sharing results: tables, figures and reports for Word, LaTeX, PDF, R Markdown and Quarto, and interactive graphics</li>
 </ul>
 <p><em>Methods</em></p>
 <ul>

@@ -20,6 +20,7 @@
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/published-analysis.html">Reproducing a published analysis: prepregnancy BMI in Ontario</a></li>
+    <li><a class="dropdown-item" href="../articles/reports.html">Sharing results: tables, figures, reports and interactive graphics</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Methods</h6></li>
     <li><a class="dropdown-item" href="../articles/model-selection.html">How many joinpoints? Model selection</a></li>
@@ -80,11 +81,20 @@
 <ul><li>Accessors <code><a href="../reference/apc.html">apc()</a></code>, <code><a href="../reference/apc.html">aapc()</a></code>, <code><a href="../reference/apc.html">joinpoints()</a></code>, <code><a href="../reference/model_selection.html">model_selection()</a></code>, <code><a href="../reference/model_estimates.html">model_estimates()</a></code>, <code><a href="../reference/jump_estimates.html">jump_estimates()</a></code>, the publication table <code><a href="../reference/jp_table.html">jp_table()</a></code>, <code><a href="https://rdrr.io/r/stats/coef.html" class="external-link">coef()</a></code> and <code><a href="https://rdrr.io/r/stats/vcov.html" class="external-link">vcov()</a></code> methods with matching parameters, <code><a href="https://rdrr.io/r/stats/fitted.values.html" class="external-link">fitted()</a></code>, <code><a href="https://rdrr.io/r/stats/residuals.html" class="external-link">residuals()</a></code>, <code><a href="https://rdrr.io/r/stats/predict.html" class="external-link">predict()</a></code> (one prediction per row of <code>newdata</code>) and <code><a href="https://rdrr.io/r/base/as.data.frame.html" class="external-link">as.data.frame()</a></code> methods, and <code><a href="../reference/jp_export.html">jp_export()</a></code> for delimited text files.</li>
 <li>
 <code>ggplot2</code> graphics: <code><a href="https://ggplot2.tidyverse.org/reference/autoplot.html" class="external-link">autoplot()</a></code> trend figures with segment labels placed to avoid each other, the curves, the points and their error bars; <code><a href="../reference/plot_apc.html">plot_apc()</a></code>, <code><a href="../reference/plot_apc.html">plot_aapc()</a></code>, <code><a href="../reference/plot_models.html">plot_models()</a></code>, <code><a href="../reference/plot_selection.html">plot_selection()</a></code>, <code><a href="../reference/plot_residuals.html">plot_residuals()</a></code>, comparison plots, <code><a href="../reference/theme_joinpoint.html">theme_joinpoint()</a></code> and color scales.</li>
+<li>Interactive graphics (<code><a href="../reference/jp_interactive.html">jp_interactive()</a></code>, or <code>interactive = TRUE</code> in the plot functions) built with ggiraph: tooltips with the APC, confidence interval and p value of each segment, the values of the observations and the joinpoint intervals, linked highlighting and zoom, for the RStudio viewer, HTML documents, pkgdown sites and Shiny.</li>
+</ul></div>
+<div class="section level3">
+<h3 id="export-and-reports-0-1-0">Export and reports<a class="anchor" aria-label="anchor" href="#export-and-reports-0-1-0"></a></h3>
+<ul><li>
+<code><a href="../reference/jp_save.html">jp_save()</a></code> writes tables to delimited text, Markdown, LaTeX (booktabs), Word, OpenDocument, PowerPoint, RTF, HTML and PDF; figures to the image formats of ggplot2, LaTeX figures and documents; and interactive graphics to standalone web pages.</li>
+<li>
+<code><a href="../reference/jp_report.html">jp_report()</a></code> writes a complete report of a fit as an R Markdown or Quarto source, or renders it to HTML, Word, OpenDocument, PDF, Markdown or LaTeX.</li>
+<li>With <code>options(joinpoint.knit_table = TRUE)</code>, fits printed in R Markdown and Quarto documents appear as formatted tables.</li>
 </ul></div>
 <div class="section level3">
 <h3 id="data-and-documentation-0-1-0">Data and documentation<a class="anchor" aria-label="anchor" href="#data-and-documentation-0-1-0"></a></h3>
 <ul><li>Data sets <code>us_mortality</code>, <code>std_populations</code> and <code>ontario_bmi</code>.</li>
-<li>Eight vignettes, including a reproduction of a published analysis of prepregnancy body mass index (Khademioore et al. 2026).</li>
+<li>Nine vignettes, including a reproduction of a published analysis of prepregnancy body mass index (Khademioore et al. 2026).</li>
 </ul></div>
 </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>

@@ -130,18 +130,20 @@ above:
 
 The yearly means and the fitted segments of Figure 3, with the 95%
 confidence interval of each yearly mean as an error bar and the slope of
-each segment and its interval written next to the segment:
+each segment and its interval written next to the segment. The figures
+of this article are interactive (see
+[`jp_interactive()`](https://skhademioore.github.io/joinpoint/reference/jp_interactive.md)):
+hovering a segment shows its period, slope, confidence interval and p
+value and highlights it, hovering a year shows its mean with its
+confidence interval and the fitted value, and the toolbar zooms and
+saves the figure as an image.
 
 ``` r
 
-autoplot(fit, error_bars = TRUE, labels = "ci") +
+g <- autoplot(fit, error_bars = TRUE, labels = "ci", interactive = TRUE) +
   labs(x = "Fiscal year (start)", y = expression("Mean BMI (kg/m"^2 * ")"))
+jp_interactive(g, width = 7, height = 4.2)
 ```
-
-![Mean prepregnancy BMI in Ontario by fiscal year with 95% error bars
-and the fitted linear joinpoint model, with the slope of each segment
-and its confidence interval written on the
-segment.](published-analysis_files/figure-html/unnamed-chunk-6-1.png)
 
 [`jp_table()`](https://skhademioore.github.io/joinpoint/reference/jp_table.md)
 gives the manuscript table, including the average annual change (AAC)
@@ -181,27 +183,21 @@ divergence of underweight and normal weight stand out:
 
 ``` r
 
-autoplot(fit_cat, layout = "overlay", labels = "none", error_bars = TRUE,
-         log_y = TRUE) +
+g <- autoplot(fit_cat, layout = "overlay", labels = "none", error_bars = TRUE,
+              log_y = TRUE, interactive = TRUE) +
   labs(x = "Fiscal year (start)", y = "Prevalence (%)")
+jp_interactive(g, width = 7, height = 5)
 ```
-
-![Prevalence of the six BMI categories by fiscal year in one panel on a
-logarithmic axis, with 95% error bars and the fitted joinpoint
-models.](published-analysis_files/figure-html/unnamed-chunk-9-1.png)
 
 Panels colored by trend direction show where each category turned:
 
 ``` r
 
-autoplot(fit_cat, color_by = "trend", error_bars = TRUE, aapc = TRUE) +
+g <- autoplot(fit_cat, color_by = "trend", error_bars = TRUE, aapc = TRUE,
+              interactive = TRUE) +
   labs(x = "Fiscal year (start)", y = "Prevalence (%)")
+jp_interactive(g, width = 8, height = 6)
 ```
-
-![Six panels, one per BMI category, showing prevalence by fiscal year
-with 95% error bars, segments colored by trend direction, and the
-average annual percent change in each panel
-title.](published-analysis_files/figure-html/unnamed-chunk-10-1.png)
 
 The overweight and underweight series turn in 2016, the year the mean
 turned, while obesity class I was already rising from 2014. Obesity

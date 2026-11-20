@@ -9,9 +9,9 @@ intervals by cohort and range.
 ## Usage
 
 ``` r
-plot_apc(object, model = "final", ncol = NULL)
+plot_apc(object, model = "final", ncol = NULL, interactive = FALSE)
 
-plot_aapc(object, model = "final")
+plot_aapc(object, model = "final", interactive = FALSE)
 ```
 
 ## Arguments
@@ -27,6 +27,12 @@ plot_aapc(object, model = "final")
 - ncol:
 
   Number of facet columns.
+
+- interactive:
+
+  Draw interactive `ggiraph` layers (tooltips and linked highlighting);
+  show the result with
+  [`jp_interactive()`](https://skhademioore.github.io/joinpoint/reference/jp_interactive.md).
 
 ## Value
 

@@ -4,7 +4,9 @@
 trend analysis (Kim et al. 2000). It finds the points in time at which a
 trend changes, summarizes each period by its annual percent change
 (APC), fixed periods by the average annual percent change (AAPC), and
-draws publication quality figures with ggplot2.
+draws publication quality figures with ggplot2, static or interactive.
+Tables, figures and complete reports are saved for manuscripts in Word,
+LaTeX, PDF, HTML, R Markdown and Quarto.
 
 It covers the classical least squares joinpoint model with its error
 models, model selection rules and confidence intervals, together with
@@ -59,6 +61,11 @@ jp_table(fit)            # formatted table for a manuscript
 autoplot(fit, color_by = "trend", log_y = TRUE)
 plot_apc(fit)
 plot_aapc(fit)
+jp_interactive(fit)      # interactive figure with tooltips and zoom
+
+jp_save(jp_table(fit), "trends.docx")      # Word table (also .tex, .md, .csv, ...)
+jp_save(autoplot(fit), "trends.png")       # figure (also .pdf, .svg, .tex, ...)
+jp_report(fit, "report.qmd")               # Quarto report (also .Rmd, .html, .docx, .pdf)
 ```
 
 ## What is covered
@@ -87,6 +94,8 @@ plot_aapc(fit)
 | Pairwise tests of parallelism and coincidence, AAPC comparison, multiplicity adjustment | [`jp_compare()`](https://skhademioore.github.io/joinpoint/reference/jp_compare.md) | Kim et al. (2004) |
 | Multi-group clustering of age groups | [`jp_cluster()`](https://skhademioore.github.io/joinpoint/reference/jp_cluster.md) |  |
 | Model estimates, covariance, goodness of fit (R squared, Durbin-Watson), data and export tables | [`model_estimates()`](https://skhademioore.github.io/joinpoint/reference/model_estimates.md), [`vcov()`](https://rdrr.io/r/stats/vcov.html), [`model_selection()`](https://skhademioore.github.io/joinpoint/reference/model_selection.md), [`as.data.frame()`](https://rdrr.io/r/base/as.data.frame.html), [`jp_export()`](https://skhademioore.github.io/joinpoint/reference/jp_export.md) |  |
+| Interactive graphics with tooltips, linked highlighting and zoom | [`jp_interactive()`](https://skhademioore.github.io/joinpoint/reference/jp_interactive.md), `interactive = TRUE` |  |
+| Tables, figures and reports for Word, LaTeX, PDF, HTML, R Markdown and Quarto | [`jp_save()`](https://skhademioore.github.io/joinpoint/reference/jp_save.md), [`jp_report()`](https://skhademioore.github.io/joinpoint/reference/jp_report.md) |  |
 
 Not covered: Bayesian joinpoint models and joinpoint models for survival
 or complex survey data.
@@ -106,8 +115,10 @@ resampling over thousands of data sets run in seconds.
 | [`coef()`](https://rdrr.io/r/stats/coef.html), [`vcov()`](https://rdrr.io/r/stats/vcov.html), [`fitted()`](https://rdrr.io/r/stats/fitted.values.html), [`residuals()`](https://rdrr.io/r/stats/residuals.html), [`predict()`](https://rdrr.io/r/stats/predict.html), [`as.data.frame()`](https://rdrr.io/r/base/as.data.frame.html) | Standard model methods |
 | [`jp_compare()`](https://skhademioore.github.io/joinpoint/reference/jp_compare.md) | Pairwise tests of parallelism and coincidence, AAPC comparisons |
 | [`jp_cluster()`](https://skhademioore.github.io/joinpoint/reference/jp_cluster.md), [`age_adjust()`](https://skhademioore.github.io/joinpoint/reference/age_adjust.md) | Clustering of contiguous age groups; direct age adjustment |
+| [`jp_save()`](https://skhademioore.github.io/joinpoint/reference/jp_save.md), [`jp_report()`](https://skhademioore.github.io/joinpoint/reference/jp_report.md) | Tables, figures and complete reports in document formats |
 | [`jp_export()`](https://skhademioore.github.io/joinpoint/reference/jp_export.md) | Every result table as delimited text |
 | [`autoplot()`](https://ggplot2.tidyverse.org/reference/autoplot.html), [`plot_apc()`](https://skhademioore.github.io/joinpoint/reference/plot_apc.md), [`plot_aapc()`](https://skhademioore.github.io/joinpoint/reference/plot_apc.md), [`plot_models()`](https://skhademioore.github.io/joinpoint/reference/plot_models.md), [`plot_selection()`](https://skhademioore.github.io/joinpoint/reference/plot_selection.md), [`plot_residuals()`](https://skhademioore.github.io/joinpoint/reference/plot_residuals.md) | Figures |
+| [`jp_interactive()`](https://skhademioore.github.io/joinpoint/reference/jp_interactive.md) | Interactive figures |
 | [`theme_joinpoint()`](https://skhademioore.github.io/joinpoint/reference/theme_joinpoint.md), [`scale_color_joinpoint()`](https://skhademioore.github.io/joinpoint/reference/theme_joinpoint.md), [`scale_fill_joinpoint()`](https://skhademioore.github.io/joinpoint/reference/theme_joinpoint.md) | Theme and color scales of the figures |
 
 ## Validation
@@ -142,7 +153,10 @@ website](https://skhademioore.github.io/joinpoint/articles/), or with
   table
 - [`vignette("published-analysis")`](https://skhademioore.github.io/joinpoint/articles/published-analysis.html):
   reproducing a published analysis of prepregnancy BMI in Ontario,
-  quantity by quantity
+  quantity by quantity, with interactive figures
+- [`vignette("reports")`](https://skhademioore.github.io/joinpoint/articles/reports.html):
+  sharing results: tables, figures and reports for Word, LaTeX, PDF, R
+  Markdown and Quarto, and interactive graphics
 
 *Methods*
 
@@ -346,11 +360,22 @@ Publication quality figures built with ggplot2.
   [`scale_color_joinpoint()`](https://skhademioore.github.io/joinpoint/reference/theme_joinpoint.md)
   [`scale_fill_joinpoint()`](https://skhademioore.github.io/joinpoint/reference/theme_joinpoint.md)
   : Theme and color scales for joinpoint graphics
+- [`jp_interactive()`](https://skhademioore.github.io/joinpoint/reference/jp_interactive.md)
+  : Interactive joinpoint graphics
 
-## Export
+## Export and reports
 
+Tables, figures and interactive graphics saved for manuscripts, reports
+and web pages, complete reports, and R Markdown and Quarto output.
+
+- [`jp_save()`](https://skhademioore.github.io/joinpoint/reference/jp_save.md)
+  : Save a table, figure or report
+- [`jp_report()`](https://skhademioore.github.io/joinpoint/reference/jp_report.md)
+  : Joinpoint report as a document, R Markdown or Quarto file
 - [`jp_export()`](https://skhademioore.github.io/joinpoint/reference/jp_export.md)
   : Export joinpoint results
+- [`knit_print(`*`<joinpoint>`*`)`](https://skhademioore.github.io/joinpoint/reference/knit_print.joinpoint.md)
+  : Printing joinpoint fits in R Markdown and Quarto
 
 ## Data sets
 
@@ -371,6 +396,8 @@ A complete analysis from a first fit to a manuscript table and figure.
   mortality](https://skhademioore.github.io/joinpoint/articles/joinpoint.md):
 - [Reproducing a published analysis: prepregnancy BMI in
   Ontario](https://skhademioore.github.io/joinpoint/articles/published-analysis.md):
+- [Sharing results: tables, figures, reports and interactive
+  graphics](https://skhademioore.github.io/joinpoint/articles/reports.md):
 
 ### Methods
 

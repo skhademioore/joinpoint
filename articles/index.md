@@ -8,6 +8,8 @@ A complete analysis from a first fit to a manuscript table and figure.
   mortality](https://skhademioore.github.io/joinpoint/articles/joinpoint.md):
 - [Reproducing a published analysis: prepregnancy BMI in
   Ontario](https://skhademioore.github.io/joinpoint/articles/published-analysis.md):
+- [Sharing results: tables, figures, reports and interactive
+  graphics](https://skhademioore.github.io/joinpoint/articles/reports.md):
 
 ### Methods
 

@@ -75,11 +75,22 @@ Publication quality figures built with ggplot2.
   [`scale_color_joinpoint()`](https://skhademioore.github.io/joinpoint/reference/theme_joinpoint.md)
   [`scale_fill_joinpoint()`](https://skhademioore.github.io/joinpoint/reference/theme_joinpoint.md)
   : Theme and color scales for joinpoint graphics
+- [`jp_interactive()`](https://skhademioore.github.io/joinpoint/reference/jp_interactive.md)
+  : Interactive joinpoint graphics
 
-## Export
+## Export and reports
 
+Tables, figures and interactive graphics saved for manuscripts, reports
+and web pages, complete reports, and R Markdown and Quarto output.
+
+- [`jp_save()`](https://skhademioore.github.io/joinpoint/reference/jp_save.md)
+  : Save a table, figure or report
+- [`jp_report()`](https://skhademioore.github.io/joinpoint/reference/jp_report.md)
+  : Joinpoint report as a document, R Markdown or Quarto file
 - [`jp_export()`](https://skhademioore.github.io/joinpoint/reference/jp_export.md)
   : Export joinpoint results
+- [`knit_print(`*`<joinpoint>`*`)`](https://skhademioore.github.io/joinpoint/reference/knit_print.joinpoint.md)
+  : Printing joinpoint fits in R Markdown and Quarto
 
 ## Data sets
 

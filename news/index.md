@@ -83,9 +83,29 @@
   comparison plots,
   [`theme_joinpoint()`](https://skhademioore.github.io/joinpoint/reference/theme_joinpoint.md)
   and color scales.
+- Interactive graphics
+  ([`jp_interactive()`](https://skhademioore.github.io/joinpoint/reference/jp_interactive.md),
+  or `interactive = TRUE` in the plot functions) built with ggiraph:
+  tooltips with the APC, confidence interval and p value of each
+  segment, the values of the observations and the joinpoint intervals,
+  linked highlighting and zoom, for the RStudio viewer, HTML documents,
+  pkgdown sites and Shiny.
+
+### Export and reports
+
+- [`jp_save()`](https://skhademioore.github.io/joinpoint/reference/jp_save.md)
+  writes tables to delimited text, Markdown, LaTeX (booktabs), Word,
+  OpenDocument, PowerPoint, RTF, HTML and PDF; figures to the image
+  formats of ggplot2, LaTeX figures and documents; and interactive
+  graphics to standalone web pages.
+- [`jp_report()`](https://skhademioore.github.io/joinpoint/reference/jp_report.md)
+  writes a complete report of a fit as an R Markdown or Quarto source,
+  or renders it to HTML, Word, OpenDocument, PDF, Markdown or LaTeX.
+- With `options(joinpoint.knit_table = TRUE)`, fits printed in R
+  Markdown and Quarto documents appear as formatted tables.
 
 ### Data and documentation
 
 - Data sets `us_mortality`, `std_populations` and `ontario_bmi`.
-- Eight vignettes, including a reproduction of a published analysis of
+- Nine vignettes, including a reproduction of a published analysis of
   prepregnancy body mass index (Khademioore et al. 2026).

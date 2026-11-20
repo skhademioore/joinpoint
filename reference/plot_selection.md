@@ -7,7 +7,7 @@ value of each test against its significance level.
 ## Usage
 
 ``` r
-plot_selection(object)
+plot_selection(object, interactive = FALSE)
 ```
 
 ## Arguments
@@ -15,6 +15,12 @@ plot_selection(object)
 - object:
 
   A `joinpoint` object.
+
+- interactive:
+
+  Draw interactive `ggiraph` layers (tooltips and linked highlighting);
+  show the result with
+  [`jp_interactive()`](https://skhademioore.github.io/joinpoint/reference/jp_interactive.md).
 
 ## Value
 
