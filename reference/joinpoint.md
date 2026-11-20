@@ -38,6 +38,7 @@ joinpoint(
   jump = NULL,
   comparability_ratio = NULL,
   cr_variance = 0,
+  cr_covariance = c("shared", "nci"),
   interval = "Annual",
   control = jp_control()
 )
@@ -65,7 +66,10 @@ joinpoint(
 
 - se:
 
-  Optional column of standard errors of `y` (on the original scale).
+  Optional column of standard errors of `y` (on the original scale). As
+  in weighted least squares, they give the relative variances of the
+  observations (the weights); the residual variance scale is estimated
+  from the data.
 
 - count, population:
 
@@ -106,12 +110,16 @@ joinpoint(
 - autocorrelation:
 
   First order autocorrelation of the errors: a number in (-1, 1), or
-  `"estimate"` to estimate it from the data.
+  `"estimate"` to estimate it from the data. Lags count the observations
+  of the cohort in time order, excluded ones included, so the
+  observations are assumed equally spaced.
 
 - vcov:
 
-  Optional variance-covariance matrix of the responses (single cohort
-  only).
+  Optional variance-covariance matrix of the responses, with one row and
+  column per row of `data` (single cohort only). Like `se`, it gives the
+  relative covariance of the errors; the residual variance scale is
+  estimated from the data. It cannot be combined with `autocorrelation`.
 
 - kmin, kmax:
 
@@ -124,7 +132,8 @@ joinpoint(
   `"bic3"`, `"mbic"` (modified BIC), `"dds"` (data dependent selection)
   or `"permutation"` for least squares fits; `"wbic"`, `"bic"`, `"bic3"`
   or `"lrt"` (sequential Monte Carlo likelihood ratio test) for Poisson
-  and binomial fits.
+  and binomial fits. The modified BIC follows the NCI Joinpoint
+  definition, which depends on the units of `y` and `x`.
 
 - ci_method:
 
@@ -135,6 +144,11 @@ joinpoint(
   condition on the estimated joinpoints, except the interval of a
   joinpoint location; for Poisson and binomial fits they are Wald
   intervals and the joinpoint interval is based on the profile deviance.
+  Ignoring the uncertainty of estimated joinpoints, parametric intervals
+  of segment trends can cover less often than their nominal level,
+  especially for small slope changes. Empirical quantile intervals
+  re-estimate the joinpoints in every resample. All intervals condition
+  on the selected number of joinpoints.
 
 - covariates:
 
@@ -169,7 +183,8 @@ joinpoint(
 - exclude:
 
   Values of `x` to exclude from model fitting. Excluded points are kept
-  in the data and graphs.
+  in the data and graphs; their responses are not checked or
+  transformed, so an excluded zero does not prevent a log-linear fit.
 
 - shift:
 
@@ -184,7 +199,20 @@ joinpoint(
 - comparability_ratio, cr_variance:
 
   Comparability ratio (new coding over old coding) and its variance for
-  the comparability ratio model.
+  the comparability ratio model. Every observation before the change is
+  multiplied by the ratio.
+
+- cr_covariance:
+
+  How the uncertainty of the comparability ratio enters the error
+  covariance. `"shared"` (default): the one estimated ratio multiplies
+  every old coding observation, so by the delta method it adds
+  `cr_variance / comparability_ratio^2` to the covariance of every pair
+  of them on the log scale (with constant variance, after the residual
+  variance is estimated from the largest model). `"nci"`: as the NCI
+  Joinpoint program, the variance of each adjusted old coding rate
+  becomes `CR^2 Var(r) + r^2 cr_variance`, independently for each
+  observation, and `cr_variance` is not used with constant variance.
 
 - interval:
 

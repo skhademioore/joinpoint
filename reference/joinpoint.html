@@ -105,6 +105,7 @@ confidence intervals.</p>
 <span>  jump <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  comparability_ratio <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  cr_variance <span class="op">=</span> <span class="fl">0</span>,</span>
+<span>  cr_covariance <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"shared"</span>, <span class="st">"nci"</span><span class="op">)</span>,</span>
 <span>  interval <span class="op">=</span> <span class="st">"Annual"</span>,</span>
 <span>  control <span class="op">=</span> <span class="fu"><a href="jp_control.html">jp_control</a></span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="op">)</span></span></code></pre></div>
@@ -134,7 +135,9 @@ May be omitted when <code>count</code> and <code>population</code> are given.</p
 
 <dt id="arg-se">se<a class="anchor" aria-label="anchor" href="#arg-se"></a></dt>
 <dd><p>Optional column of standard errors of <code>y</code> (on the original
-scale).</p></dd>
+scale). As in weighted least squares, they give the relative variances
+of the observations (the weights); the residual variance scale is
+estimated from the data.</p></dd>
 
 
 <dt id="arg-count-population">count, population<a class="anchor" aria-label="anchor" href="#arg-count-population"></a></dt>
@@ -175,12 +178,17 @@ linear model <code>y = xb</code> (<code>FALSE</code>).</p></dd>
 
 <dt id="arg-autocorrelation">autocorrelation<a class="anchor" aria-label="anchor" href="#arg-autocorrelation"></a></dt>
 <dd><p>First order autocorrelation of the errors: a number
-in (-1, 1), or <code>"estimate"</code> to estimate it from the data.</p></dd>
+in (-1, 1), or <code>"estimate"</code> to estimate it from the data. Lags count the
+observations of the cohort in time order, excluded ones included, so the
+observations are assumed equally spaced.</p></dd>
 
 
 <dt id="arg-vcov">vcov<a class="anchor" aria-label="anchor" href="#arg-vcov"></a></dt>
-<dd><p>Optional variance-covariance matrix of the responses (single
-cohort only).</p></dd>
+<dd><p>Optional variance-covariance matrix of the responses, with one
+row and column per row of <code>data</code> (single cohort only). Like <code>se</code>, it
+gives the relative covariance of the errors; the residual variance
+scale is estimated from the data. It cannot be combined with
+<code>autocorrelation</code>.</p></dd>
 
 
 <dt id="arg-kmin-kmax">kmin, kmax<a class="anchor" aria-label="anchor" href="#arg-kmin-kmax"></a></dt>
@@ -193,7 +201,8 @@ uses the recommended maximum for the number of observations.</p></dd>
 <code>"bic"</code>, <code>"bic3"</code>, <code>"mbic"</code> (modified BIC), <code>"dds"</code> (data dependent
 selection) or <code>"permutation"</code> for least squares fits; <code>"wbic"</code>,
 <code>"bic"</code>, <code>"bic3"</code> or <code>"lrt"</code> (sequential Monte Carlo likelihood ratio
-test) for Poisson and binomial fits.</p></dd>
+test) for Poisson and binomial fits. The modified BIC follows the NCI
+Joinpoint definition, which depends on the units of <code>y</code> and <code>x</code>.</p></dd>
 
 
 <dt id="arg-ci-method">ci_method<a class="anchor" aria-label="anchor" href="#arg-ci-method"></a></dt>
@@ -203,7 +212,12 @@ squares fits with grid joinpoints) or <code>"parametric"</code> (the only method
 Poisson and binomial fits and for continuous joinpoints). Parametric
 intervals condition on the estimated joinpoints, except the interval of
 a joinpoint location; for Poisson and binomial fits they are Wald
-intervals and the joinpoint interval is based on the profile deviance.</p></dd>
+intervals and the joinpoint interval is based on the profile deviance.
+Ignoring the uncertainty of estimated joinpoints, parametric intervals
+of segment trends can cover less often than their nominal level,
+especially for small slope changes. Empirical quantile intervals
+re-estimate the joinpoints in every resample. All intervals condition
+on the selected number of joinpoints.</p></dd>
 
 
 <dt id="arg-covariates">covariates<a class="anchor" aria-label="anchor" href="#arg-covariates"></a></dt>
@@ -237,7 +251,8 @@ criteria and is reported by <code><a href="model_selection.html">model_selection
 
 <dt id="arg-exclude">exclude<a class="anchor" aria-label="anchor" href="#arg-exclude"></a></dt>
 <dd><p>Values of <code>x</code> to exclude from model fitting. Excluded
-points are kept in the data and graphs.</p></dd>
+points are kept in the data and graphs; their responses are not checked
+or transformed, so an excluded zero does not prevent a log-linear fit.</p></dd>
 
 
 <dt id="arg-shift">shift<a class="anchor" aria-label="anchor" href="#arg-shift"></a></dt>
@@ -252,7 +267,20 @@ coding. Fits the jump model, or the comparability ratio model when
 
 <dt id="arg-comparability-ratio-cr-variance">comparability_ratio, cr_variance<a class="anchor" aria-label="anchor" href="#arg-comparability-ratio-cr-variance"></a></dt>
 <dd><p>Comparability ratio (new coding
-over old coding) and its variance for the comparability ratio model.</p></dd>
+over old coding) and its variance for the comparability ratio model.
+Every observation before the change is multiplied by the ratio.</p></dd>
+
+
+<dt id="arg-cr-covariance">cr_covariance<a class="anchor" aria-label="anchor" href="#arg-cr-covariance"></a></dt>
+<dd><p>How the uncertainty of the comparability ratio
+enters the error covariance. <code>"shared"</code> (default): the one estimated
+ratio multiplies every old coding observation, so by the delta method
+it adds <code>cr_variance / comparability_ratio^2</code> to the covariance of every
+pair of them on the log scale (with constant variance, after the
+residual variance is estimated from the largest model). <code>"nci"</code>: as the
+NCI Joinpoint program, the variance of each adjusted old coding rate
+becomes <code>CR^2 Var(r) + r^2 cr_variance</code>, independently for each
+observation, and <code>cr_variance</code> is not used with constant variance.</p></dd>
 
 
 <dt id="arg-interval">interval<a class="anchor" aria-label="anchor" href="#arg-interval"></a></dt>

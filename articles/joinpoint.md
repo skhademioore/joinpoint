@@ -120,8 +120,8 @@ autoplot(fit, color_by = "trend", log_y = TRUE) +
 
 ![Six panels, one per cause of death, of age adjusted death rates on
 logarithmic axes, with the fitted segments colored by whether the trend
-significantly increased, significantly decreased or was
-stable.](joinpoint_files/figure-html/unnamed-chunk-6-1.png)
+significantly increased, significantly decreased or did not change
+significantly.](joinpoint_files/figure-html/unnamed-chunk-6-1.png)
 
 When the question is “how fast did each trend change, and when”, the APC
 plot reads more directly than the data. Each segment is drawn over the

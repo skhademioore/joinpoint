@@ -29,6 +29,7 @@ jp_cluster(
   final_method = "wbic",
   rate_per = 1e+05,
   control = jp_control(),
+  standardize = c("original", "compressed"),
   ...
 )
 ```
@@ -110,6 +111,19 @@ jp_cluster(
   [`jp_control()`](https://skhademioore.github.io/joinpoint/reference/jp_control.md),
   used for the clustering fits and the final fits.
 
+- standardize:
+
+  Age groups of the direct standardization of the final cluster rates:
+  `"original"` (default) standardizes each cluster with its original age
+  groups, their own rates and standard weights, as
+  [`age_adjust()`](https://skhademioore.github.io/joinpoint/reference/age_adjust.md)
+  does; `"compressed"` uses the compressed age groups, as the NCI
+  Joinpoint program does. Compression pools the counts and populations
+  of the merged age groups, so when their population shares change over
+  time the compressed rates can show a trend that no original
+  age-specific rate has. Compression always serves the choice of the
+  clusters.
+
 - ...:
 
   Further arguments to
@@ -123,6 +137,15 @@ cluster selection table, the final clusters, the MADWD steps, the
 cluster rates and `fit`, the
 [`joinpoint()`](https://skhademioore.github.io/joinpoint/reference/joinpoint.md)
 fit of the cluster age adjusted rates.
+
+## Details
+
+Every contiguous block of age groups is searched for joinpoints in the
+first stage. With `kmax = NULL` the recommended maximum is lowered, with
+a message, when that search would exceed the time budget of
+[`jp_control()`](https://skhademioore.github.io/joinpoint/reference/jp_control.md)
+for all blocks together; an explicit `kmax` is kept, with a message
+giving the expected time when it exceeds the budget.
 
 ## Examples
 

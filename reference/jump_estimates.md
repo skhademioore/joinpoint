@@ -4,7 +4,8 @@ For jump models (see the `jump` argument of
 [`joinpoint()`](https://skhademioore.github.io/joinpoint/reference/joinpoint.md)),
 the estimated jump on the log scale and the comparability ratio
 `exp(jump)` with standard errors, confidence intervals and tests (null
-values 0 and 1).
+values 0 and 1). For binomial fits the jump is on the logit scale and
+`exp(jump)` is an odds ratio, labeled as such.
 
 ## Usage
 

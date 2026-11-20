@@ -10,9 +10,11 @@ joinpoints, where `K1` and `K2` are the numbers selected for each cohort
 and `K0` the number selected for the two cohorts fitted together under
 the null hypothesis. For each pair whose test rejects the null
 hypothesis (after any p value adjustment) the AAPCs of the two cohorts
-of a log-linear fit are compared by a z test with parametric variances,
-also when the fit used empirical quantile intervals; these follow-up p
-values are not adjusted.
+of a log-linear fit are compared by a z test of their difference in
+percentage points, with the delta method standard error that also gives
+its confidence interval, and parametric variances, also when the fit
+used empirical quantile intervals; these follow-up p values are not
+adjusted.
 
 ## Usage
 
@@ -86,6 +88,6 @@ cmp
 #> AAPC comparisons (group 1 minus group 2):
 #>         group1 group2                  range    aapc1  aapc2 difference lower
 #>  Heart Disease Stroke Full Range (1900-1998) -0.02318 -1.472      1.449 1.255
-#>  upper statistic p_value significant  ci_method
-#>  1.643     14.55 5.5e-48        TRUE parametric
+#>  upper statistic   p_value significant  ci_method
+#>  1.643     14.62 1.973e-48        TRUE parametric
 ```

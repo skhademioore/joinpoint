@@ -55,6 +55,12 @@ jp_export(
 
 The paths of the written files, invisibly.
 
+## Details
+
+The files of an earlier export to the same directory with the same
+prefix that this export does not write (tables that do not apply to this
+fit) are removed, so the directory always holds one consistent set.
+
 ## Examples
 
 ``` r

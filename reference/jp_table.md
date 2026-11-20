@@ -4,7 +4,8 @@ Formats the APCs of the segments (slopes for linear models) and the
 AAPCs (AACs) of the final, or a given, model as a character table with
 estimates, confidence intervals and p values, ready for
 [`knitr::kable()`](https://rdrr.io/pkg/knitr/man/kable.html) or other
-table packages.
+table packages. With `model = "all"`, the columns `Model` (number of
+joinpoints) and `Final` identify the model of each row.
 
 ## Usage
 

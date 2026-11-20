@@ -109,11 +109,11 @@ tbc <- subset(us_mortality, cause == "Tuberculosis" & year >= 1950)
 fit_tb <- joinpoint(tbc, year, rate, kmax = 3, jump = 1978,
                     ci_method = "parametric")
 joinpoints(fit_tb)$estimate
-#> [1] 1954 1978 1993
+#> [1] 1954 1979 1993
 jump_estimates(fit_tb)[, c("statistic", "estimate", "se")]
 #>             statistic   estimate se
-#> 1          Jump value -0.3970586 NA
-#> 2 Comparability ratio  0.6722946 NA
+#> 1          Jump value -0.3326398 NA
+#> 2 Comparability ratio  0.7170284 NA
 ```
 
 In the separate segment regressions used for standard errors, the jump

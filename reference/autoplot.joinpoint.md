@@ -44,8 +44,8 @@ plot(x, ...)
 - color_by:
 
   `"cohort"` colors each cohort; `"trend"` colors each segment by its
-  direction: significantly increasing, significantly decreasing, stable,
-  or not tested.
+  direction: significantly increasing, significantly decreasing, no
+  significant change, or not tested.
 
 - layout:
 

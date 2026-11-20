@@ -37,8 +37,9 @@ Standard methods for fitted joinpoint models.
   : Observed and modeled values
 - [`predict(`*`<joinpoint>`*`)`](https://skhademioore.github.io/joinpoint/reference/predict.joinpoint.md)
   : Predictions from a joinpoint fit
-- [`vcov(`*`<joinpoint>`*`)`](https://skhademioore.github.io/joinpoint/reference/vcov.joinpoint.md)
-  : Covariance of the segment parameters
+- [`coef(`*`<joinpoint>`*`)`](https://skhademioore.github.io/joinpoint/reference/coef.joinpoint.md)
+  [`vcov(`*`<joinpoint>`*`)`](https://skhademioore.github.io/joinpoint/reference/coef.joinpoint.md)
+  : Coefficients and their covariance
 
 ## Comparing and clustering trends
 

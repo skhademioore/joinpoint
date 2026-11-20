@@ -44,7 +44,9 @@ predict(
 
 ## Value
 
-A data frame with cohort keys, `x` and `fit`.
+A data frame with cohort keys, `x` and `fit`. With `newdata`, one row
+per row of `newdata`, in its order; rows whose by-variable values match
+no fitted cohort get a missing `fit`.
 
 ## Examples
 

@@ -72,7 +72,9 @@ jp_control(
 
   Random number seed for the permutation test (`NULL` for the current
   random number stream). The global random number state is saved before
-  the seed is set and restored afterwards.
+  the seed is set and restored afterwards (`.Random.seed`; with the
+  Box-Muller normal generator, a normal deviate R keeps outside
+  `.Random.seed` is not restored).
 
 - n_resample:
 
@@ -107,7 +109,8 @@ jp_control(
 - aapc_last:
 
   Integer vector (up to two values) of "Last X observations" AAPC
-  ranges.
+  ranges: the range from the X-th last observation of the cohort,
+  excluded observations counted, to the last included one.
 
 - aapc_ranges:
 
@@ -129,7 +132,9 @@ jp_control(
   `kmax` under the placement constraints: `"reduce"` lowers `kmax` to
   the largest feasible value, `"recommended"` uses the recommended
   maximum for the cohort, and `"skip"` leaves the cohort out. A warning
-  is given in every case.
+  is given in every case. A `kmin` above the feasible maximum is never
+  lowered: the cohort is left out with a warning (the call fails if no
+  cohort remains).
 
 - tau_interval:
 

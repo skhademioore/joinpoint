@@ -9,8 +9,9 @@ K = max(K0, K1, K2) joinpoints, where K1 and K2 are the numbers
 selected for each cohort and K0 the number selected for the two cohorts
 fitted together under the null hypothesis. For each pair whose test
 rejects the null hypothesis (after any p value adjustment) the AAPCs of
-the two cohorts of a log-linear fit are compared by a z test with
-parametric variances, also
+the two cohorts of a log-linear fit are compared by a z test of their
+difference in percentage points, with the delta method standard error
+that also gives its confidence interval, and parametric variances, also
 when the fit used empirical quantile intervals; these follow-up p values
 are not adjusted."><meta property="og:description" content="Tests whether the joinpoint regression functions of two cohorts are
 identical (test of coincidence) or parallel (test of parallelism, equal
@@ -22,8 +23,9 @@ K = max(K0, K1, K2) joinpoints, where K1 and K2 are the numbers
 selected for each cohort and K0 the number selected for the two cohorts
 fitted together under the null hypothesis. For each pair whose test
 rejects the null hypothesis (after any p value adjustment) the AAPCs of
-the two cohorts of a log-linear fit are compared by a z test with
-parametric variances, also
+the two cohorts of a log-linear fit are compared by a z test of their
+difference in percentage points, with the delta method standard error
+that also gives its confidence interval, and parametric variances, also
 when the fit used empirical quantile intervals; these follow-up p values
 are not adjusted."><meta property="og:image" content="https://skhademioore.github.io/joinpoint/logo.svg"><meta name="description" content="Joinpoint regression for trend analysis in R: annual percent change (APC), average annual percent change (AAPC), model selection and publication quality graphics."></head><body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
@@ -91,8 +93,9 @@ by-variables. The test is carried out with
 selected for each cohort and <code>K0</code> the number selected for the two cohorts
 fitted together under the null hypothesis. For each pair whose test
 rejects the null hypothesis (after any p value adjustment) the AAPCs of
-the two cohorts of a log-linear fit are compared by a z test with
-parametric variances, also
+the two cohorts of a log-linear fit are compared by a z test of their
+difference in percentage points, with the delta method standard error
+that also gives its confidence interval, and parametric variances, also
 when the fit used empirical quantile intervals; these follow-up p values
 are not adjusted.</p>
     </div>
@@ -170,8 +173,8 @@ Comparability of segmented line regression models. Biometrics
 <span class="r-out co"><span class="r-pr">#&gt;</span> AAPC comparisons (group 1 minus group 2):</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>         group1 group2                  range    aapc1  aapc2 difference lower</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  Heart Disease Stroke Full Range (1900-1998) -0.02318 -1.472      1.449 1.255</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  upper statistic p_value significant  ci_method</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>  1.643     14.55 5.5e-48        TRUE parametric</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  upper statistic   p_value significant  ci_method</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  1.643     14.62 1.973e-48        TRUE parametric</span>
 </code></pre></div>
     </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>

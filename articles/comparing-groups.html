@@ -157,7 +157,7 @@ residuals of the null model.</p>
 <span><span class="co">#&gt;         group1 group2                  range  aapc1  aapc2 difference  lower</span></span>
 <span><span class="co">#&gt;  Heart Disease Stroke Full Range (1950-1998) -1.515 -2.291     0.7758 0.5567</span></span>
 <span><span class="co">#&gt;   upper statistic   p_value significant  ci_method</span></span>
-<span><span class="co">#&gt;  0.9949      6.92 4.507e-12        TRUE parametric</span></span></code></pre></div>
+<span><span class="co">#&gt;  0.9949     6.939 3.944e-12        TRUE parametric</span></span></code></pre></div>
 <p>The trends are not parallel. The plot compares the separate fits
 (solid) with the best parallel fit (dashed):</p>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
@@ -179,8 +179,8 @@ with the comparison:</p>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/attr.html" class="external-link">attr</a></span><span class="op">(</span><span class="va">par_test</span>, <span class="st">"aapc"</span><span class="op">)</span><span class="op">[</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"range"</span>, <span class="st">"difference"</span>, <span class="st">"lower"</span>, <span class="st">"upper"</span>,</span>
 <span>                           <span class="st">"p_value"</span><span class="op">)</span><span class="op">]</span></span>
-<span><span class="co">#&gt;                    range difference     lower     upper     p_value</span></span>
-<span><span class="co">#&gt; 1 Full Range (1950-1998)  0.7758024 0.5566782 0.9949267 4.50659e-12</span></span></code></pre></div>
+<span><span class="co">#&gt;                    range difference     lower     upper      p_value</span></span>
+<span><span class="co">#&gt; 1 Full Range (1950-1998)  0.7758024 0.5566782 0.9949267 3.943559e-12</span></span></code></pre></div>
 <p>Over 1950 to 1998 stroke mortality fell faster than heart disease
 mortality. Comparing AAPCs over a common period is often more meaningful
 than comparing the final segments of the two series, which can differ

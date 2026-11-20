@@ -21,7 +21,9 @@
   1966).
 - Covariates (`covariates = ~ ...`), excluded data points, shifted x
   values, jump and comparability ratio models for coding changes (Chen
-  et al. 2020).
+  et al. 2020), with the uncertainty of the comparability ratio shared
+  by all old coding observations or added to each of them as in the NCI
+  Joinpoint program.
 
 ### Model selection
 
@@ -30,7 +32,8 @@
   Carlo likelihood ratio test, with optional early stopping (Besag and
   Clifford 1991) and a minimum APC difference worth detecting.
 - A time budget lowers the recommended maximum number of joinpoints when
-  the exhaustive search would be too slow.
+  the exhaustive search would be too slow, also across the age group
+  blocks of clustering.
 
 ### Inference
 
@@ -42,8 +45,9 @@
   ([`jp_compare()`](https://skhademioore.github.io/joinpoint/reference/jp_compare.md);
   Kim et al. 2004).
 - Clustering of contiguous age groups
-  ([`jp_cluster()`](https://skhademioore.github.io/joinpoint/reference/jp_cluster.md))
-  and direct age adjustment with delay factors
+  ([`jp_cluster()`](https://skhademioore.github.io/joinpoint/reference/jp_cluster.md)),
+  with final cluster rates standardized by the original or the
+  compressed age groups, and direct age adjustment with delay factors
   ([`age_adjust()`](https://skhademioore.github.io/joinpoint/reference/age_adjust.md)).
 
 ### Output and graphics
@@ -57,11 +61,12 @@
   [`jump_estimates()`](https://skhademioore.github.io/joinpoint/reference/jump_estimates.md),
   the publication table
   [`jp_table()`](https://skhademioore.github.io/joinpoint/reference/jp_table.md),
-  [`coef()`](https://rdrr.io/r/stats/coef.html),
-  [`vcov()`](https://rdrr.io/r/stats/vcov.html),
-  [`fitted()`](https://rdrr.io/r/stats/fitted.values.html),
+  [`coef()`](https://rdrr.io/r/stats/coef.html) and
+  [`vcov()`](https://rdrr.io/r/stats/vcov.html) methods with matching
+  parameters, [`fitted()`](https://rdrr.io/r/stats/fitted.values.html),
   [`residuals()`](https://rdrr.io/r/stats/residuals.html),
-  [`predict()`](https://rdrr.io/r/stats/predict.html) and
+  [`predict()`](https://rdrr.io/r/stats/predict.html) (one prediction
+  per row of `newdata`) and
   [`as.data.frame()`](https://rdrr.io/r/base/as.data.frame.html)
   methods, and
   [`jp_export()`](https://skhademioore.github.io/joinpoint/reference/jp_export.md)

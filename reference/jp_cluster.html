@@ -94,6 +94,7 @@ BIC, and optional clustering MADWD.</p>
 <span>  final_method <span class="op">=</span> <span class="st">"wbic"</span>,</span>
 <span>  rate_per <span class="op">=</span> <span class="fl">1e+05</span>,</span>
 <span>  control <span class="op">=</span> <span class="fu"><a href="jp_control.html">jp_control</a></span><span class="op">(</span><span class="op">)</span>,</span>
+<span>  standardize <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"original"</span>, <span class="st">"compressed"</span><span class="op">)</span>,</span>
 <span>  <span class="va">...</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
@@ -177,6 +178,18 @@ cluster age adjusted rates (see <code><a href="joinpoint.html">joinpoint()</a></
 fits and the final fits.</p></dd>
 
 
+<dt id="arg-standardize">standardize<a class="anchor" aria-label="anchor" href="#arg-standardize"></a></dt>
+<dd><p>Age groups of the direct standardization of the final
+cluster rates: <code>"original"</code> (default) standardizes each cluster with its
+original age groups, their own rates and standard weights, as
+<code><a href="age_adjust.html">age_adjust()</a></code> does; <code>"compressed"</code> uses the compressed age groups, as
+the NCI Joinpoint program does. Compression pools the counts and
+populations of the merged age groups, so when their population shares
+change over time the compressed rates can show a trend that no original
+age-specific rate has. Compression always serves the choice of the
+clusters.</p></dd>
+
+
 <dt id="arg--">...<a class="anchor" aria-label="anchor" href="#arg--"></a></dt>
 <dd><p>Further arguments to <code><a href="joinpoint.html">joinpoint()</a></code> for the final cluster fits
 (for example <code>ci_method</code>).</p></dd>
@@ -188,6 +201,14 @@ fits and the final fits.</p></dd>
 the cluster selection table, the final clusters, the MADWD steps, the
 cluster rates and <code>fit</code>, the <code><a href="joinpoint.html">joinpoint()</a></code> fit of the cluster age
 adjusted rates.</p>
+    </div>
+    <div class="section level2">
+    <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
+    <p>Every contiguous block of age groups is searched for joinpoints in the
+first stage. With <code>kmax = NULL</code> the recommended maximum is lowered, with
+a message, when that search would exceed the time budget of <code><a href="jp_control.html">jp_control()</a></code>
+for all blocks together; an explicit <code>kmax</code> is kept, with a message giving
+the expected time when it exceeds the budget.</p>
     </div>
 
     <div class="section level2">

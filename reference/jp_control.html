@@ -132,7 +132,9 @@ not reject.</p></dd>
 <dt id="arg-perm-seed">perm_seed<a class="anchor" aria-label="anchor" href="#arg-perm-seed"></a></dt>
 <dd><p>Random number seed for the permutation test (<code>NULL</code> for
 the current random number stream). The global random number state is
-saved before the seed is set and restored afterwards.</p></dd>
+saved before the seed is set and restored afterwards (<code>.Random.seed</code>;
+with the Box-Muller normal generator, a normal deviate R keeps outside
+<code>.Random.seed</code> is not restored).</p></dd>
 
 
 <dt id="arg-n-resample">n_resample<a class="anchor" aria-label="anchor" href="#arg-n-resample"></a></dt>
@@ -168,7 +170,8 @@ intervals.</p></dd>
 
 <dt id="arg-aapc-last">aapc_last<a class="anchor" aria-label="anchor" href="#arg-aapc-last"></a></dt>
 <dd><p>Integer vector (up to two values) of "Last X observations"
-AAPC ranges.</p></dd>
+AAPC ranges: the range from the X-th last observation of the cohort,
+excluded observations counted, to the last included one.</p></dd>
 
 
 <dt id="arg-aapc-ranges">aapc_ranges<a class="anchor" aria-label="anchor" href="#arg-aapc-ranges"></a></dt>
@@ -187,9 +190,12 @@ anywhere within the data range.</p></dd>
 
 <dt id="arg-infeasible">infeasible<a class="anchor" aria-label="anchor" href="#arg-infeasible"></a></dt>
 <dd><p>What to do when a cohort has too few observations for
-the requested <code>kmax</code> under the placement constraints: <code>"reduce"</code> lowers <code>kmax</code> to the largest feasible
-value, <code>"recommended"</code> uses the recommended maximum for the cohort, and
-<code>"skip"</code> leaves the cohort out. A warning is given in every case.</p></dd>
+the requested <code>kmax</code> under the placement constraints: <code>"reduce"</code> lowers
+<code>kmax</code> to the largest feasible value, <code>"recommended"</code> uses the
+recommended maximum for the cohort, and <code>"skip"</code> leaves the cohort out.
+A warning is given in every case. A <code>kmin</code> above the feasible maximum
+is never lowered: the cohort is left out with a warning (the call fails
+if no cohort remains).</p></dd>
 
 
 <dt id="arg-tau-interval">tau_interval<a class="anchor" aria-label="anchor" href="#arg-tau-interval"></a></dt>

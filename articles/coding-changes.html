@@ -170,11 +170,11 @@ last year of the old coding, right next to the jump at 1978.5:</p>
 <span><span class="va">fit_tb</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/joinpoint.html">joinpoint</a></span><span class="op">(</span><span class="va">tbc</span>, <span class="va">year</span>, <span class="va">rate</span>, kmax <span class="op">=</span> <span class="fl">3</span>, jump <span class="op">=</span> <span class="fl">1978</span>,</span>
 <span>                    ci_method <span class="op">=</span> <span class="st">"parametric"</span><span class="op">)</span></span>
 <span><span class="fu"><a href="../reference/apc.html">joinpoints</a></span><span class="op">(</span><span class="va">fit_tb</span><span class="op">)</span><span class="op">$</span><span class="va">estimate</span></span>
-<span><span class="co">#&gt; [1] 1954 1978 1993</span></span>
+<span><span class="co">#&gt; [1] 1954 1979 1993</span></span>
 <span><span class="fu"><a href="../reference/jump_estimates.html">jump_estimates</a></span><span class="op">(</span><span class="va">fit_tb</span><span class="op">)</span><span class="op">[</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"statistic"</span>, <span class="st">"estimate"</span>, <span class="st">"se"</span><span class="op">)</span><span class="op">]</span></span>
 <span><span class="co">#&gt;             statistic   estimate se</span></span>
-<span><span class="co">#&gt; 1          Jump value -0.3970586 NA</span></span>
-<span><span class="co">#&gt; 2 Comparability ratio  0.6722946 NA</span></span></code></pre></div>
+<span><span class="co">#&gt; 1          Jump value -0.3326398 NA</span></span>
+<span><span class="co">#&gt; 2 Comparability ratio  0.7170284 NA</span></span></code></pre></div>
 <p>In the separate segment regressions used for standard errors, the
 jump then coincides with the start of a segment and cannot be separated
 from its intercept, so no standard error is available. Such a jump

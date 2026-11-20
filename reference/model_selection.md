@@ -26,6 +26,14 @@ A list with data frames `criteria`, `tests`, `dds` and `madwd` (the last
 three may be `NULL`), and `selected` with the selected number of
 joinpoints per cohort.
 
+## Details
+
+The penalties of BIC, BIC3 and WBIC count the parameters of the trend:
+intercept, slopes and joinpoints. Jump and covariate coefficients,
+common to all models of a fit, are not counted, so the criteria compare
+numbers of joinpoints within a fit but not fits with different
+adjustments.
+
 ## Examples
 
 ``` r

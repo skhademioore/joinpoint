@@ -182,7 +182,7 @@ own scales, so compare slopes across causes through their APCs.</p>
 <div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/autoplot.html" class="external-link">autoplot</a></span><span class="op">(</span><span class="va">fit</span>, color_by <span class="op">=</span> <span class="st">"trend"</span>, log_y <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span> <span class="op">+</span></span>
 <span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/labs.html" class="external-link">labs</a></span><span class="op">(</span>x <span class="op">=</span> <span class="cn">NULL</span>, y <span class="op">=</span> <span class="st">"Age adjusted death rate per 100,000"</span><span class="op">)</span></span></code></pre></div>
-<p><img src="joinpoint_files/figure-html/unnamed-chunk-6-1.png" class="r-plt" alt="Six panels, one per cause of death, of age adjusted death rates on logarithmic axes, with the fitted segments colored by whether the trend significantly increased, significantly decreased or was stable." width="100%"></p>
+<p><img src="joinpoint_files/figure-html/unnamed-chunk-6-1.png" class="r-plt" alt="Six panels, one per cause of death, of age adjusted death rates on logarithmic axes, with the fitted segments colored by whether the trend significantly increased, significantly decreased or did not change significantly." width="100%"></p>
 <p>When the question is “how fast did each trend change, and when”, the
 APC plot reads more directly than the data. Each segment is drawn over
 the years it covers, at the height of its APC, with its confidence

@@ -142,11 +142,18 @@ al. 2023).</li>
 <li>
 <strong>Modified BIC</strong> (Zhang and Siegmund 2007) adds to the
 BIC terms for the determinant of the design and the residual sum of
-squares; it is the most conservative.</li>
+squares. It follows the definition of the NCI Joinpoint program, which,
+like the criterion of Zhang and Siegmund with an unknown variance,
+depends on the units of the response and of <code>x</code>: rescaling
+them can change the selected model. The other criteria do not depend on
+the units.</li>
 <li>
 <strong>Data dependent selection</strong> (DDS) picks between the
 BIC and BIC3 answers using the size of the detected changes.</li>
 </ul>
+<p>The criteria are not tests: they do not hold the probability of
+finding a joinpoint in a series without one to a fixed level such as 5%.
+The permutation test does, at the level <code>alpha</code>.</p>
 <p><code><a href="../reference/plot_selection.html">plot_selection()</a></code> draws the criteria against the number
 of joinpoints.</p>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">

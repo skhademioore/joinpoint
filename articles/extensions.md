@@ -99,7 +99,10 @@ intervals come from the joint fit of all segments with normal quantiles,
 whereas the least squares intervals come from separate regressions of
 each segment with t quantiles on few degrees of freedom. Both condition
 on the estimated joinpoint; the interval of the joinpoint itself comes
-from the profile deviance.
+from the profile deviance. Because the uncertainty of the joinpoint
+location is left out, Wald intervals of the segment trends can cover
+less often than 95%, most of all when the slope change is small; treat
+them as conditional on the joinpoint.
 
 The number of joinpoints of a likelihood model can also be chosen by a
 sequential Monte Carlo likelihood ratio test, which simulates counts

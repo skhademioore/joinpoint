@@ -66,7 +66,7 @@ par_test
 #>         group1 group2                  range  aapc1  aapc2 difference  lower
 #>  Heart Disease Stroke Full Range (1950-1998) -1.515 -2.291     0.7758 0.5567
 #>   upper statistic   p_value significant  ci_method
-#>  0.9949      6.92 4.507e-12        TRUE parametric
+#>  0.9949     6.939 3.944e-12        TRUE parametric
 ```
 
 The trends are not parallel. The plot compares the separate fits (solid)
@@ -99,8 +99,8 @@ with the comparison:
 
 attr(par_test, "aapc")[, c("range", "difference", "lower", "upper",
                            "p_value")]
-#>                    range difference     lower     upper     p_value
-#> 1 Full Range (1950-1998)  0.7758024 0.5566782 0.9949267 4.50659e-12
+#>                    range difference     lower     upper      p_value
+#> 1 Full Range (1950-1998)  0.7758024 0.5566782 0.9949267 3.943559e-12
 ```
 
 Over 1950 to 1998 stroke mortality fell faster than heart disease
