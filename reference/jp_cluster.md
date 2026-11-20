@@ -134,9 +134,11 @@ jp_cluster(
 
 An object of class `jp_cluster` with the compressed age groups, the
 cluster selection table, the final clusters, the MADWD steps, the
-cluster rates and `fit`, the
+cluster rates, `fit`, the
 [`joinpoint()`](https://skhademioore.github.io/joinpoint/reference/joinpoint.md)
-fit of the cluster age adjusted rates.
+fit of the cluster age adjusted rates, and `settings`, the settings of
+the clustering (standardization, minimum count, maximum clusters,
+joinpoint limits and selection methods).
 
 ## Details
 

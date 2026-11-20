@@ -142,6 +142,7 @@ fit_season
 #>   AMPC Full Range (1-72) = -0.345*  [-0.390, -0.301]
 #> 
 #> * Significantly different from zero at alpha = 0.05.
+#> Intervals are conditional on the selected number of joinpoints.
 ```
 
 The monthly percent changes of 1.0% and -2.0% and the joinpoint at month
@@ -194,6 +195,7 @@ fit_cont
 #>   AAC Full Range (2012-2021) = 0.074*  [0.047, 0.101]
 #> 
 #> * Significantly different from zero at alpha = 0.05.
+#> Intervals are conditional on the selected number of joinpoints.
 sse <- c(continuous = fit_cont$fits[[1]]$models[["1"]]$sse,
          grid = fit_grid$fits[[1]]$models[["1"]]$sse)
 sse

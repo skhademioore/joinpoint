@@ -121,7 +121,7 @@ jp_report(fit, file.path(dir, "mortality.qmd"),
     title: "Trends in mortality"
     author: "A. Analyst"
     date: "2026-11-20"
-    format: 
+    format:
       html:
         embed-resources: true
     execute:
@@ -137,7 +137,7 @@ jp_report(fit, file.path(dir, "mortality.qmd"),
 
     ## Analysis
 
-    The trend of Rate over Year was modeled by a log-linear joinpoint model with constant variance for each of 2 cohorts. The number of joinpoints (0 to at most 3) was selected by the weighted BIC, and parametric confidence intervals were computed. The selected models have 3 joinpoints.
+    The trend of Rate over Year was modeled by a log-linear joinpoint model with constant variance for each of 2 cohorts. The number of joinpoints (0 to at most 3) was selected by the weighted BIC; the selected models have 3 joinpoints. The tables give parametric confidence intervals at the 95% level, and the 95% level for the joinpoints. The intervals are conditional on the number of joinpoints.
 
     ## Annual Percent Changes
 
@@ -148,7 +148,7 @@ jp_report(fit, file.path(dir, "mortality.qmd"),
     ## Joinpoints
 
     ```{r}
-    knitr::kable(subset(joinpoints(fit), select = -c(model, final, ci_method)), digits = 2, caption = "Estimated joinpoints with 95% confidence intervals.")
+    jt <- joinpoints(fit)
 
 Other extensions give the rendered report: `.html`, `.docx`, `.odt`,
 `.pdf`, `.md` or `.tex`. The figures of HTML reports are interactive

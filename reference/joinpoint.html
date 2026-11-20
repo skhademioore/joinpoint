@@ -181,7 +181,11 @@ linear model <code>y = xb</code> (<code>FALSE</code>).</p></dd>
 <dd><p>First order autocorrelation of the errors: a number
 in (-1, 1), or <code>"estimate"</code> to estimate it from the data. Lags count the
 observations of the cohort in time order, excluded ones included, so the
-observations are assumed equally spaced.</p></dd>
+observations are assumed equally spaced. The estimate is the lag one
+autocorrelation of the residuals of the largest model (Kim et al. 2000)
+or, with excluded observations, the maximum likelihood value of an AR(1)
+process observed at the included positions (when every gap between them
+is even the sign is not identified, and the nonnegative value is used).</p></dd>
 
 
 <dt id="arg-vcov">vcov<a class="anchor" aria-label="anchor" href="#arg-vcov"></a></dt>
@@ -203,7 +207,13 @@ uses the recommended maximum for the number of observations.</p></dd>
 selection) or <code>"permutation"</code> for least squares fits; <code>"wbic"</code>,
 <code>"bic"</code>, <code>"bic3"</code> or <code>"lrt"</code> (sequential Monte Carlo likelihood ratio
 test) for Poisson and binomial fits. The modified BIC follows the NCI
-Joinpoint definition, which depends on the units of <code>y</code> and <code>x</code>.</p></dd>
+Joinpoint definition, which depends on the units of <code>y</code> and <code>x</code>. Two
+uses of the criteria go beyond the settings in which they were derived
+and validated: the weighted BIC of Poisson and binomial fits computes its
+weights from the working response and weights of the final iteratively
+reweighted least squares step, and with covariates or jumps the modified
+BIC keeps the dimension terms of the model without them. Results of these
+combinations should be checked against another criterion.</p></dd>
 
 
 <dt id="arg-ci-method">ci_method<a class="anchor" aria-label="anchor" href="#arg-ci-method"></a></dt>
@@ -276,9 +286,15 @@ Every observation before the change is multiplied by the ratio.</p></dd>
 <dd><p>How the uncertainty of the comparability ratio
 enters the error covariance. <code>"shared"</code> (default): the one estimated
 ratio multiplies every old coding observation, so by the delta method
-it adds <code>cr_variance / comparability_ratio^2</code> to the covariance of every
-pair of them on the log scale (with constant variance, after the
-residual variance is estimated from the largest model). <code>"nci"</code>: as the
+it adds the known variance <code>v = cr_variance / comparability_ratio^2</code> to
+the covariance of every pair of them on the log scale. The error
+covariance is <code>s R + v u u'</code>, with <code>R</code> the relative covariance of the
+observations (constant variance, <code>se</code>, autocorrelation or <code>vcov</code>), <code>u</code>
+the indicator of the old coding observations and <code>s</code> estimated so that
+the largest model has a weighted residual sum of squares equal to its
+residual degrees of freedom; this covariance is then used with its scale,
+so the known term is not rescaled. An exact fit (no residual variance)
+makes it degenerate and is refused. <code>"nci"</code>: as the
 NCI Joinpoint program, the variance of each adjusted old coding rate
 becomes <code>CR^2 Var(r) + r^2 cr_variance</code>, independently for each
 observation, and <code>cr_variance</code> is not used with constant variance.</p></dd>
@@ -335,6 +351,7 @@ patterns. Statistics in Medicine 27:1508-1526.</p>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   AAPC Full Range (1900-1998) = -6.144*  [-6.504, -5.783]</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> * Significantly different from zero at alpha = 0.05.</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Intervals are conditional on the selected number of joinpoints.</span>
 <span class="r-in"><span><span class="fu"><a href="apc.html">apc</a></span><span class="op">(</span><span class="va">fit</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   model final  ci_method segment start  end   estimate      lower      upper</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> 1     3  TRUE parametric       1  1900 1947  -3.719816  -3.911050  -3.528200</span>

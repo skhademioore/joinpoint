@@ -112,7 +112,12 @@ joinpoint(
   First order autocorrelation of the errors: a number in (-1, 1), or
   `"estimate"` to estimate it from the data. Lags count the observations
   of the cohort in time order, excluded ones included, so the
-  observations are assumed equally spaced.
+  observations are assumed equally spaced. The estimate is the lag one
+  autocorrelation of the residuals of the largest model (Kim et
+  al. 2000) or, with excluded observations, the maximum likelihood value
+  of an AR(1) process observed at the included positions (when every gap
+  between them is even the sign is not identified, and the nonnegative
+  value is used).
 
 - vcov:
 
@@ -133,7 +138,14 @@ joinpoint(
   or `"permutation"` for least squares fits; `"wbic"`, `"bic"`, `"bic3"`
   or `"lrt"` (sequential Monte Carlo likelihood ratio test) for Poisson
   and binomial fits. The modified BIC follows the NCI Joinpoint
-  definition, which depends on the units of `y` and `x`.
+  definition, which depends on the units of `y` and `x`. Two uses of the
+  criteria go beyond the settings in which they were derived and
+  validated: the weighted BIC of Poisson and binomial fits computes its
+  weights from the working response and weights of the final iteratively
+  reweighted least squares step, and with covariates or jumps the
+  modified BIC keeps the dimension terms of the model without them.
+  Results of these combinations should be checked against another
+  criterion.
 
 - ci_method:
 
@@ -206,10 +218,16 @@ joinpoint(
 
   How the uncertainty of the comparability ratio enters the error
   covariance. `"shared"` (default): the one estimated ratio multiplies
-  every old coding observation, so by the delta method it adds
-  `cr_variance / comparability_ratio^2` to the covariance of every pair
-  of them on the log scale (with constant variance, after the residual
-  variance is estimated from the largest model). `"nci"`: as the NCI
+  every old coding observation, so by the delta method it adds the known
+  variance `v = cr_variance / comparability_ratio^2` to the covariance
+  of every pair of them on the log scale. The error covariance is
+  `s R + v u u'`, with `R` the relative covariance of the observations
+  (constant variance, `se`, autocorrelation or `vcov`), `u` the
+  indicator of the old coding observations and `s` estimated so that the
+  largest model has a weighted residual sum of squares equal to its
+  residual degrees of freedom; this covariance is then used with its
+  scale, so the known term is not rescaled. An exact fit (no residual
+  variance) makes it degenerate and is refused. `"nci"`: as the NCI
   Joinpoint program, the variance of each adjusted old coding rate
   becomes `CR^2 Var(r) + r^2 cr_variance`, independently for each
   observation, and `cr_variance` is not used with constant variance.
@@ -270,6 +288,7 @@ fit
 #>   AAPC Full Range (1900-1998) = -6.144*  [-6.504, -5.783]
 #> 
 #> * Significantly different from zero at alpha = 0.05.
+#> Intervals are conditional on the selected number of joinpoints.
 apc(fit)
 #>   model final  ci_method segment start  end   estimate      lower      upper
 #> 1     3  TRUE parametric       1  1900 1947  -3.719816  -3.911050  -3.528200

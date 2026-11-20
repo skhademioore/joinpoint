@@ -34,6 +34,7 @@ fit
 #>   AAPC Full Range (1950-1998) = -2.291*  [-2.492, -2.090]
 #> 
 #> * Significantly different from zero at alpha = 0.05.
+#> Intervals are conditional on the selected number of joinpoints.
 ```
 
 ## Parallel or coincident?

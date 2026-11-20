@@ -53,6 +53,7 @@ fit_tb
 #>   AAPC Full Range (1900-1998) = -6.144*  [-6.241, -6.032]
 #> 
 #> * Significantly different from zero at alpha = 0.05.
+#> Intervals are conditional on the selected number of joinpoints.
 ```
 
 Three joinpoints split the century into four periods. The decline

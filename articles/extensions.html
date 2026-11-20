@@ -280,7 +280,8 @@ month 40, with a seasonal swing.</p>
 <span><span class="co">#&gt;   40-72  MPC = -1.960*  [-2.032, -1.887]</span></span>
 <span><span class="co">#&gt;   AMPC Full Range (1-72) = -0.345*  [-0.390, -0.301]</span></span>
 <span><span class="co">#&gt; </span></span>
-<span><span class="co">#&gt; * Significantly different from zero at alpha = 0.05.</span></span></code></pre></div>
+<span><span class="co">#&gt; * Significantly different from zero at alpha = 0.05.</span></span>
+<span><span class="co">#&gt; Intervals are conditional on the selected number of joinpoints.</span></span></code></pre></div>
 <p>The monthly percent changes of 1.0% and -2.0% and the joinpoint at
 month 40 are recovered. The plot shows the observed values, seasonal
 swing included, and the trend at the average season:</p>
@@ -323,6 +324,7 @@ moves:</p>
 <span><span class="co">#&gt;   AAC Full Range (2012-2021) = 0.074*  [0.047, 0.101]</span></span>
 <span><span class="co">#&gt; </span></span>
 <span><span class="co">#&gt; * Significantly different from zero at alpha = 0.05.</span></span>
+<span><span class="co">#&gt; Intervals are conditional on the selected number of joinpoints.</span></span>
 <span><span class="va">sse</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>continuous <span class="op">=</span> <span class="va">fit_cont</span><span class="op">$</span><span class="va">fits</span><span class="op">[[</span><span class="fl">1</span><span class="op">]</span><span class="op">]</span><span class="op">$</span><span class="va">models</span><span class="op">[[</span><span class="st">"1"</span><span class="op">]</span><span class="op">]</span><span class="op">$</span><span class="va">sse</span>,</span>
 <span>         grid <span class="op">=</span> <span class="va">fit_grid</span><span class="op">$</span><span class="va">fits</span><span class="op">[[</span><span class="fl">1</span><span class="op">]</span><span class="op">]</span><span class="op">$</span><span class="va">models</span><span class="op">[[</span><span class="st">"1"</span><span class="op">]</span><span class="op">]</span><span class="op">$</span><span class="va">sse</span><span class="op">)</span></span>
 <span><span class="va">sse</span></span>

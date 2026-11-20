@@ -74,6 +74,7 @@ fit
 #>   AAC Full Range (2012-2021) = 0.077*  [0.051, 0.102]
 #> 
 #> * Significantly different from zero at alpha = 0.05.
+#> Intervals are conditional on the selected number of joinpoints.
 ```
 
 The selection statistics, the slope change at the joinpoint and the

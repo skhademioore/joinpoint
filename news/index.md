@@ -9,10 +9,12 @@
   by `by`): linear or log-linear models of rates, age adjusted rates,
   proportions, percents, counts or other values, with constant variance,
   supplied standard errors, Poisson variance, first order autocorrelated
-  errors or a supplied covariance matrix.
+  errors (estimated at the actual gaps when observations are excluded)
+  or a supplied covariance matrix.
 - Joinpoints are found by an exhaustive grid search with placement
   constraints and optional points between observations (Lerman 1980),
-  compiled in C++ and evaluated from cross products.
+  compiled in C++ and evaluated from cross products, with an exact
+  search from residual vectors when a model fits almost perfectly.
 - Poisson and logistic joinpoint models fitted by exact maximum
   likelihood (Czajkowski et al. 2008), with Wald intervals, profile
   deviance joinpoint intervals, deviance based criteria and optional
@@ -22,7 +24,8 @@
 - Covariates (`covariates = ~ ...`), excluded data points, shifted x
   values, jump and comparability ratio models for coding changes (Chen
   et al. 2020), with the uncertainty of the comparability ratio shared
-  by all old coding observations or added to each of them as in the NCI
+  by all old coding observations (its known variance kept apart from the
+  estimated residual variance) or added to each of them as in the NCI
   Joinpoint program.
 
 ### Model selection
@@ -47,7 +50,8 @@
 - Clustering of contiguous age groups
   ([`jp_cluster()`](https://skhademioore.github.io/joinpoint/reference/jp_cluster.md)),
   with final cluster rates standardized by the original or the
-  compressed age groups, and direct age adjustment with delay factors
+  compressed age groups (the settings are kept in the result), and
+  direct age adjustment with delay factors
   ([`age_adjust()`](https://skhademioore.github.io/joinpoint/reference/age_adjust.md)).
 
 ### Output and graphics
