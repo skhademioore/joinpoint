@@ -19,6 +19,8 @@ A data frame, or \code{NULL} when no jump model was fitted.
 For jump models (see the \code{jump} argument of \code{\link[=joinpoint]{joinpoint()}}), the estimated
 jump on the log scale and the comparability ratio \code{exp(jump)} with
 standard errors, confidence intervals and tests (null values 0 and 1).
+For binomial fits the jump is on the logit scale and \code{exp(jump)} is an
+odds ratio, labeled as such.
 }
 \examples{
 heart <- subset(us_mortality, cause == "Heart Disease" & year >= 1950)

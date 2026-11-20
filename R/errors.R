@@ -1,14 +1,21 @@
 # Error structures. The covariance of the model scale response is stored as
 # `S`: a vector of variances (diagonal case, possibly all ones for constant
 # variance) or a full covariance matrix (autocorrelated errors or a supplied
-# variance-covariance matrix). Only relative values matter for estimation.
+# variance-covariance matrix). Only relative values matter for estimation:
+# the residual variance scale is estimated from the data, as in weighted
+# least squares.
 
-jp_ar1_corr <- function(n, rho) {
-  rho^abs(outer(seq_len(n), seq_len(n), "-"))
+# AR(1) correlation of observations at positions `pos` of the cohort's time
+# sequence: excluded observations keep their place, so the lag between the
+# observations on either side of an excluded one is two.
+jp_ar1_corr <- function(n, rho, pos = seq_len(n)) {
+  rho^abs(outer(pos, pos, "-"))
 }
 
-# Builds S for the included observations.
-jp_covariance <- function(v, rho = 0, vcov = NULL, r = NULL, log = TRUE) {
+# Builds S for the included observations (at positions `pos` of the
+# cohort's time sequence).
+jp_covariance <- function(v, rho = 0, vcov = NULL, r = NULL, log = TRUE,
+                          pos = seq_along(v)) {
   n <- length(v)
   sd <- if (all(is.na(v))) rep(1, n) else sqrt(v)
   if (!is.null(vcov)) {
@@ -23,14 +30,29 @@ jp_covariance <- function(v, rho = 0, vcov = NULL, r = NULL, log = TRUE) {
     return(if (log) vcov / outer(r, r) else vcov)
   }
   if (rho != 0) {
-    return(outer(sd, sd) * jp_ar1_corr(n, rho))
+    return(outer(sd, sd) * jp_ar1_corr(n, rho, pos))
   }
   sd^2
 }
 
 # Weight (inverse covariance) representation used by the fitting code.
+# The weight matrix W = S^-1 and its Cholesky factor U (U'U = W) of the
+# last covariance matrix are cached: a fit factors the same matrix many
+# times, at a cost cubic in the number of observations.
+jp_cov_cache <- new.env(parent = emptyenv())
+
+jp_cov_factors <- function(S) {
+  if (!identical(S, jp_cov_cache$S)) {
+    W <- chol2inv(chol(S))
+    jp_cov_cache$U <- chol(W)
+    jp_cov_cache$W <- W
+    jp_cov_cache$S <- S
+  }
+  jp_cov_cache
+}
+
 jp_weights <- function(S) {
-  if (is.matrix(S)) chol2inv(chol(S)) else 1 / S
+  if (is.matrix(S)) jp_cov_factors(S)$W else 1 / S
 }
 
 jp_subset_cov <- function(S, idx) {
@@ -40,7 +62,7 @@ jp_subset_cov <- function(S, idx) {
 # Whitening transform U with U' U = W, so that U e has identity covariance.
 jp_whiten_mat <- function(S) {
   if (is.matrix(S)) {
-    chol(jp_weights(S))
+    jp_cov_factors(S)$U
   } else {
     1 / sqrt(S)
   }

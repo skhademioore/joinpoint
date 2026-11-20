@@ -40,6 +40,11 @@ AAPC comparisons, clustering tables, skipped cohorts, the centered
 covariate design, a supplied covariance matrix and every setting of the
 run. \code{saveRDS()} keeps the complete fitted object.
 }
+\details{
+The files of an earlier export to the same directory with the same
+prefix that this export does not write (tables that do not apply to this
+fit) are removed, so the directory always holds one consistent set.
+}
 \examples{
 tb <- subset(us_mortality, cause == "Tuberculosis")
 fit <- joinpoint(tb, year, rate, kmax = 2, ci_method = "parametric")

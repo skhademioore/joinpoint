@@ -30,7 +30,7 @@ test_that("pairwise comparison accepts parallel trends", {
   fit <- joinpoint(dd, x, y, by = "g", kmax = 2, method = "bic",
                    ci_method = "parametric")
   cmp <- jp_compare(fit, n_perm = 199)
-  expect_equal(cmp$result, "Parallel")
+  expect_equal(cmp$result, "Parallelism not rejected")
   cmp2 <- jp_compare(fit, type = "coincidence", n_perm = 199)
   expect_equal(cmp2$result, "Not coincident")
   expect_s3_class(autoplot(cmp2), "ggplot")
@@ -131,7 +131,7 @@ test_that("identical cohorts are not declared different", {
                  ci_method = "parametric")
   cmp <- jp_compare(f, n_perm = 99)
   expect_equal(cmp$p_value, 1)
-  expect_equal(cmp$result, "Parallel")
+  expect_equal(cmp$result, "Parallelism not rejected")
   expect_true(all(is.na(model_selection(f)$criteria$r_squared)))
 })
 
@@ -143,4 +143,34 @@ test_that("ambiguous age labels are refused in clustering", {
   expect_error(jp_cluster(d, year, count, pop, age,
                           standard = c("<5" = 1, "5-9" = 1, "10-14" = 1),
                           kmax = 0), "ambiguous")
+})
+
+test_that("labels on a log axis skip segments fitted at or below zero", {
+  d <- data.frame(x = 1:7, y = c(1, 1, 1, 1, 1, 1, 100))
+  f <- joinpoint(d, x, y, log = FALSE, type = "other", kmin = 1, kmax = 1,
+                 ci_method = "parametric")
+  expect_no_error(suppressWarnings(
+    ggplot2::ggplot_build(autoplot(f, log_y = TRUE))))
+})
+
+test_that("a label keeps clear of the error bar under it", {
+  d <- data.frame(x = 1:9, y = 1, se = .2)
+  f <- joinpoint(d, x, y, se = se, log = FALSE, type = "other", kmax = 0,
+                 ci_method = "parametric")
+  p <- autoplot(f, error_bars = TRUE)
+  geoms <- vapply(p$layers, function(l) class(l$geom)[1L], "")
+  lab <- ggplot2::layer_data(p, which(geoms == "GeomLabel"))
+  expect_true(lab$y > 1 + 1.96 * .2 || lab$y < 1 - 1.96 * .2)
+})
+
+test_that("a flat trend is not colored as a direction", {
+  f <- joinpoint(data.frame(x = 1:12, y = 1), x, y, kmax = 0,
+                 control = jp_control(n_resample = 100))
+  p <- autoplot(f, color_by = "trend", labels = "none", band = FALSE)
+  keys <- unlist(lapply(p$layers, function(l) {
+    if (is.data.frame(l$data) && "key" %in% names(l$data)) {
+      as.character(l$data$key)
+    }
+  }))
+  expect_false(any(keys %in% c("Increasing", "Decreasing")))
 })

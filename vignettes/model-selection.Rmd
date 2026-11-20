@@ -53,10 +53,17 @@ The BIC family has the form `ln(SSE / n) + penalty(k) ln(n) / n`:
   equal to the largest local partial R^2 of a slope change, so clear changes
   are penalized like BIC3 and subtle ones like BIC (Kim et al. 2023).
 - **Modified BIC** (Zhang and Siegmund 2007) adds to the BIC terms for the
-  determinant of the design and the residual sum of squares; it is the
-  most conservative.
+  determinant of the design and the residual sum of squares. It follows the definition of the NCI Joinpoint
+  program, which, like the criterion of Zhang and Siegmund with an unknown
+  variance, depends on the units of the response and of `x`: rescaling them
+  can change the selected model. The other criteria do not depend on the
+  units.
 - **Data dependent selection** (DDS) picks between the BIC and BIC3 answers
   using the size of the detected changes.
+
+The criteria are not tests: they do not hold the probability of finding a
+joinpoint in a series without one to a fixed level such as 5%. The
+permutation test does, at the level `alpha`.
 
 `plot_selection()` draws the criteria against the number of joinpoints.
 

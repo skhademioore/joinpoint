@@ -69,8 +69,10 @@ jp_unconstrained <- function(x, y, S, tau, jump = NULL, covars = NULL) {
     X[seg == j, 2L * j - 1L] <- 1
     X[seg == j, 2L * j] <- xs[seg == j] - ctr
   }
+  # The jump is a step common to all later observations, as in the fitted
+  # model, so later segment intercepts exclude it.
   if (!is.null(jump)) {
-    X <- cbind(X, as.numeric(seg == findInterval(jump, tau) + 1L & xs >= jump))
+    X <- cbind(X, as.numeric(xs >= jump))
   }
   # Covariates enter every segment with common coefficients.
   if (!is.null(covars)) X <- cbind(X, covars[keep, , drop = FALSE])
@@ -89,13 +91,14 @@ jp_unconstrained <- function(x, y, S, tau, jump = NULL, covars = NULL) {
     Ri <- backsolve(R, diag(p))
     V[piv, piv] <- sigma2 * Ri %*% t(Ri)
   }
-  # Segments with fewer than two retained observations have no estimable
-  # slope; their statistics are reported as missing.
+  # Segments with fewer than two retained observations have neither an
+  # estimable slope nor an estimable intercept; their statistics are
+  # reported as missing.
   n_seg <- tabulate(seg, nseg)
   bad <- which(n_seg < 2L)
   for (j in bad) {
     V[2L * j, ] <- V[, 2L * j] <- NA_real_
-    if (n_seg[j] < 1L) V[2L * j - 1L, ] <- V[, 2L * j - 1L] <- NA_real_
+    V[2L * j - 1L, ] <- V[, 2L * j - 1L] <- NA_real_
   }
   # Intercepts on the original x scale: a_j = a_j(c) - b_j * ctr. Missing
   # entries are kept out of the product so they do not spread to other

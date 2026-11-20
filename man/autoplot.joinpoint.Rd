@@ -31,7 +31,7 @@
 
 \item{color_by}{\code{"cohort"} colors each cohort; \code{"trend"} colors each
 segment by its direction: significantly increasing, significantly
-decreasing, stable, or not tested.}
+decreasing, no significant change, or not tested.}
 
 \item{layout}{\code{"facet"} draws one panel per cohort; \code{"overlay"} draws all
 cohorts in one panel.}

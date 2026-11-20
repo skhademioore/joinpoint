@@ -10,3 +10,4 @@ docs/
 *.Rcheck/
 joinpoint_*.tar.gz
 /.gstack/
+.claude/

@@ -26,7 +26,15 @@ test_that("Poisson and binomial joinpoints are maximum likelihood fits", {
   db <- data.frame(x, ev = rbinom(30, 500, p), n = 500)
   fb <- joinpoint(db, x, count = ev, population = n, family = "binomial",
                   kmax = 1, kmin = 1, method = "bic")
-  expect_equal(fb$fits[[1]]$models[["1"]]$tau, 19)
+  # Brute force: the deviance of every admissible one-joinpoint logistic fit.
+  devs <- vapply(3:28, function(a) {
+    glm.fit(cbind(1, x, pmax(x - a, 0)), db$ev / db$n, weights = db$n,
+            family = binomial())$deviance
+  }, numeric(1))
+  m1 <- fb$fits[[1]]$models[["1"]]
+  expect_equal(m1$tau, (3:28)[which.min(devs)])
+  expect_equal(m1$tau, 19)
+  expect_equal(m1$sse, min(devs), tolerance = 1e-8)
   expect_match(names(jp_table(fb))[3], "odds")
   expect_s3_class(autoplot(fb), "ggplot")
   expect_error(joinpoint(db, x, count = ev, population = n,

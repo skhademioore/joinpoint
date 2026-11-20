@@ -23,6 +23,7 @@ jp_cluster(
   final_method = "wbic",
   rate_per = 1e+05,
   control = jp_control(),
+  standardize = c("original", "compressed"),
   ...
 )
 }
@@ -70,6 +71,16 @@ cluster age adjusted rates (see \code{\link[=joinpoint]{joinpoint()}}).}
 \item{control}{Settings from \code{\link[=jp_control]{jp_control()}}, used for the clustering
 fits and the final fits.}
 
+\item{standardize}{Age groups of the direct standardization of the final
+cluster rates: \code{"original"} (default) standardizes each cluster with its
+original age groups, their own rates and standard weights, as
+\code{\link[=age_adjust]{age_adjust()}} does; \code{"compressed"} uses the compressed age groups, as
+the NCI Joinpoint program does. Compression pools the counts and
+populations of the merged age groups, so when their population shares
+change over time the compressed rates can show a trend that no original
+age-specific rate has. Compression always serves the choice of the
+clusters.}
+
 \item{...}{Further arguments to \code{\link[=joinpoint]{joinpoint()}} for the final cluster fits
 (for example \code{ci_method}).}
 }
@@ -86,6 +97,13 @@ pre-analysis count compression, parallel joinpoint fits
 for every block of contiguous age groups, the partition into \code{m}
 clusters with minimum total residual sum of squares, selection of \code{m} by
 BIC, and optional clustering MADWD.
+}
+\details{
+Every contiguous block of age groups is searched for joinpoints in the
+first stage. With \code{kmax = NULL} the recommended maximum is lowered, with
+a message, when that search would exceed the time budget of \code{\link[=jp_control]{jp_control()}}
+for all blocks together; an explicit \code{kmax} is kept, with a message giving
+the expected time when it exceeds the budget.
 }
 \examples{
 set.seed(1)

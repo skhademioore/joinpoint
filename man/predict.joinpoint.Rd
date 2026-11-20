@@ -26,7 +26,9 @@ covariates). Defaults to the fitted data.}
 \item{...}{Ignored.}
 }
 \value{
-A data frame with cohort keys, \code{x} and \code{fit}.
+A data frame with cohort keys, \code{x} and \code{fit}. With \code{newdata}, one
+row per row of \code{newdata}, in its order; rows whose by-variable values
+match no fitted cohort get a missing \code{fit}.
 }
 \description{
 Predictions include the effects of the covariates at their values in the

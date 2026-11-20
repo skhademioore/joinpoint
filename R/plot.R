@@ -5,7 +5,8 @@ jp_pal <- c("#2a78d6", "#eb6834", "#1baf7a", "#eda100", "#e87ba4", "#008300",
 jp_ink <- c(primary = "#0b0b0b", secondary = "#52514e", muted = "#898781",
             grid = "#e1e0d9", axis = "#c3c2b7")
 jp_trend_cols <- c(Increasing = "#d03b3b", Decreasing = "#2a78d6",
-                   Stable = "#898781", `Not tested` = "#c3c2b7")
+                   `No significant change` = "#898781",
+                   `Not tested` = "#c3c2b7")
 
 #' Theme and color scales for joinpoint graphics
 #'
@@ -116,11 +117,12 @@ jp_fmt <- function(v, digits = 1) {
   formatC(round(v, digits) + 0, digits = digits, format = "f")
 }
 
-# Direction of each segment: significant increase or decrease, stable, or
-# not tested when no p value is available.
+# Direction of each segment: significant increase or decrease, no
+# significant change (which does not show that the trend is flat), or not
+# tested when no p value is available.
 jp_trend <- function(estimate, p, alpha) {
   factor(ifelse(is.na(p), "Not tested",
-                ifelse(p >= alpha, "Stable",
+                ifelse(p >= alpha, "No significant change",
                        ifelse(estimate > 0, "Increasing", "Decreasing"))),
          names(jp_trend_cols))
 }
@@ -156,8 +158,10 @@ jp_plot_data <- function(object, model, cohorts = NULL, digits = 1,
       ),
       jump = if (!is.null(f$jump_at)) {
         cr <- f$comparability_ratio %||% exp(m$coef[["jump"]])
+        # A logistic jump is an odds ratio, not a ratio of rates.
+        lab <- if (identical(m$link, "logit")) "OR " else "CR "
         data.frame(cohort = labs[i], x = f$jump_at,
-                   label = paste0("CR ", formatC(cr, digits = 3, format = "f")))
+                   label = paste0(lab, formatC(cr, digits = 3, format = "f")))
       },
       aapc = if (!is.null(m$aapc)) {
         data.frame(cohort = labs[i], m$aapc[1L, , drop = FALSE])
@@ -184,7 +188,7 @@ jp_plot_data <- function(object, model, cohorts = NULL, digits = 1,
 #' @param model `"final"` or a number of joinpoints.
 #' @param color_by `"cohort"` colors each cohort; `"trend"` colors each
 #'   segment by its direction: significantly increasing, significantly
-#'   decreasing, stable, or not tested.
+#'   decreasing, no significant change, or not tested.
 #' @param layout `"facet"` draws one panel per cohort; `"overlay"` draws all
 #'   cohorts in one panel.
 #' @param cohorts Optional integer indices of cohorts to draw.
@@ -340,23 +344,35 @@ autoplot.joinpoint <- function(object, model = "final",
     sg <- do.call(rbind, lapply(split(pd$segments, panel(pd$segments),
                                       drop = TRUE), function(d) {
       on <- panel(pts) == panel(d)[1L]
-      cv <- curve[panel(curve) == panel(d)[1L] & !is.na(curve$fit), ]
-      # The points and their error bars are obstacles too, and the error
-      # bars widen the panel's y range.
+      cv <- curve[panel(curve) == panel(d)[1L], ]
+      cy <- suppressWarnings(tf(cv$fit))
+      cv <- cv[is.finite(cy), ]
+      cy <- cy[is.finite(cy)]
+      # Obstacles are vertical intervals: the curve points (of no height),
+      # and the observed points with their error bars, which also widen the
+      # panel's y range. On a log axis an error bar reaching zero or below
+      # runs to the bottom of the panel.
       ob <- pts[on, ]
-      k <- if (error_bars) seq(-1, 1, by = 0.25) else 0
-      se <- ifelse(is.na(ob$se), 0, ob$se)
-      ox <- rep(ob$x, each = length(k))
-      oy <- suppressWarnings(tf(rep(ob$y, each = length(k)) +
-                                  rep(se, each = length(k)) * 1.96 * k))
+      se <- if (error_bars) ifelse(is.na(ob$se), 0, ob$se) else 0
+      oy <- suppressWarnings(tf(ob$y))
       ok <- is.finite(oy)
-      jp_place_labels(d, range(ob$x),
-                      range(c(oy[ok], tf(cv$fit)), na.rm = TRUE), tf,
-                      c(cv$x, ox[ok]), c(tf(cv$fit), oy[ok]),
+      lo <- suppressWarnings(tf(ob$y - 1.96 * se))
+      hi <- suppressWarnings(tf(ob$y + 1.96 * se))
+      lo[!is.finite(lo)] <- -Inf
+      hi[!is.finite(hi)] <- oy[!is.finite(hi)]
+      # Labels need a finite anchor: on a log axis a segment fitted at or
+      # below zero has none and is left unlabeled.
+      d <- d[is.finite(suppressWarnings(tf(d$y))), , drop = FALSE]
+      yr <- range(c(lo[ok & is.finite(lo)], hi[ok], cy))
+      if (!nrow(d) || !all(is.finite(yr))) {
+        return(NULL)
+      }
+      jp_place_labels(d, range(ob$x), yr, tf,
+                      c(cv$x, ob$x[ok]), c(cy, lo[ok]), c(cy, hi[ok]),
                       cw = 1.1 * 0.065 * nc / 6.9,
                       lh = (1 + 2 * pad) * 0.14 * ceiling(np / nc) / 3.8)
     }))
-    g <- g + ggplot2::geom_label(
+    if (!is.null(sg)) g <- g + ggplot2::geom_label(
       data = sg, ggplot2::aes(y = .data$label_y, label = .data$label,
                               hjust = .data$hjust, vjust = .data$vjust),
       color = jp_ink[["secondary"]], size = 3,
@@ -409,24 +425,29 @@ autoplot.joinpoint <- function(object, model = "final",
 
 # Positions of the segment labels of one panel, in panel fractions: each
 # label goes next to the middle of its segment on the side facing the middle
-# of the panel, just clear of the obstacles under its span (`cx`, `cy`: the
-# fitted curves, the points and their error bars), else on the other side,
-# else stacked further out, at the first position that overlaps neither a
-# label already placed nor an obstacle; a two-line label that fits nowhere is cut to its first line, and a
-# label that still fits nowhere takes the position of least overlap. `cw`
+# of the panel, just clear of the obstacles under its span (vertical
+# intervals at `cx` from `clo` to `chi`: the fitted curves, the points and
+# their error bars), else on the other side, else stacked further out, at
+# the first position that overlaps neither a label already placed nor an
+# obstacle; a two-line label that fits nowhere is cut to its first line,
+# and a label that still fits nowhere takes the position of least overlap.
+# `cw`
 # and `lh` are the width of a character and the height of a line as
 # fractions of the panel. Each label is anchored at its edge nearest the
 # curve, so a label drawn taller than estimated (a shorter figure) grows away
 # from the curve rather than onto it.
-jp_place_labels <- function(d, xr, yr, tf, cx, cy, cw, lh) {
+jp_place_labels <- function(d, xr, yr, tf, cx, clo, chi, cw, lh) {
   d <- d[order(d$x), ]
   # A flat series has no y range; give it the unit range ggplot2 draws.
   if (!isTRUE(diff(yr) > 0)) yr <- yr + c(-0.5, 0.5)
   X <- (d$x - xr[1L]) / diff(xr)
   Y <- (tf(d$y) - yr[1L]) / diff(yr)
+  if (!isTRUE(diff(xr) > 0)) xr <- xr + c(-0.5, 0.5)
   CX <- (cx - xr[1L]) / diff(xr)
-  CY <- (cy - yr[1L]) / diff(yr)
+  CL <- (clo - yr[1L]) / diff(yr)
+  CH <- (chi - yr[1L]) / diff(yr)
   d$hjust <- ifelse(X < 0.08, 0, ifelse(X > 0.92, 1, 0.5))
+  d$vjust <- 0
   placed <- matrix(numeric(0), 0L, 4L)
   mid <- numeric(nrow(d))
   for (i in seq_len(nrow(d))) {
@@ -446,21 +467,22 @@ jp_place_labels <- function(d, xr, yr, tf, cx, cy, cw, lh) {
       edge <- mapply(function(l, side, clear) {
         if (!clear) return(Y[i] + side * 0.03)
         on <- CX > l - cw / 2 & CX < l + w + cw / 2
-        if (side > 0) max(Y[i] + 0.03, CY[on] + 0.02)
-        else min(Y[i] - 0.03, CY[on] - 0.02)
+        if (side > 0) max(Y[i] + 0.03, CH[on] + 0.02)
+        else min(Y[i] - 0.03, CL[on] - 0.02)
       }, cand$left, cand$side, cand$clear)
       cand$lo <- ifelse(cand$side > 0, edge + cand$level * h,
                         edge - (cand$level + 1) * h)
       inside <- cand$lo > -0.18 & cand$lo + h < 1.18 &
         cand$left > -0.02 & cand$left + w < 1.02
       if (any(inside)) cand <- cand[inside, ]
-      # Overlap with placed labels (area) and with the obstacles (points,
-      # with a small margin so that no label grazes a mark).
+      # Overlap with placed labels (area) and with the obstacles (intervals
+      # crossing the box, with a small margin so that no label grazes a
+      # mark).
       clash <- mapply(function(l, lo) {
         sum(pmax(0, pmin(l + w, placed[, 2L]) - pmax(l, placed[, 1L])) *
               pmax(0, pmin(lo + h, placed[, 4L]) - pmax(lo, placed[, 3L]))) +
-          1e-3 * sum(CX > l & CX < l + w & CY > lo - 0.01 &
-                       CY < lo + h + 0.01)
+          1e-3 * sum(CX >= l & CX <= l + w & CH > lo - 0.01 &
+                       CL < lo + h + 0.01)
       }, cand$left, cand$lo)
       b <- which.min(clash)
       list(nl = nl, clash = clash[b], hj = cand$hj[b], up = cand$side[b] > 0,
@@ -756,7 +778,7 @@ plot_residuals <- function(object, type = c("time", "qq", "acf"),
       return(NULL)
     }
     m <- jp_pick(f, model)
-    if (sum(m$wresid^2) <= jp_tiny(jp_whiten_mat(f$S), f$y)) {
+    if (sum(m$wresid^2) <= jp_tiny(jp_whiten_mat(f$S), f$y, f$x)) {
       stop("Cohort ", jp_cohort_label(object, g), " is fitted exactly; its ",
            "residuals are numerically zero.", call. = FALSE)
     }
@@ -822,3 +844,25 @@ jp_ylab <- function(s) {
 }
 
 `%||%` <- function(a, b) if (is.null(a)) b else a
+
+# Groups the rows of the data frame `keys` by their combination of values,
+# in lexical order of the columns (each ordered as factor() orders it),
+# leaving out rows with a missing key. Values are matched as tuples, so keys
+# such as ("A.B", "C") and ("A", "B.C") stay apart. Returns a factor with one
+# level per combination (NA for incomplete rows).
+jp_key_factor <- function(keys) {
+  keys <- as.data.frame(keys)
+  if (!ncol(keys)) {
+    return(factor(rep("1", nrow(keys))))
+  }
+  codes <- lapply(keys, function(v) as.integer(factor(v)))
+  id <- do.call(paste, c(codes, sep = "\r"))
+  ok <- stats::complete.cases(keys)
+  id[!ok] <- NA
+  o <- do.call(order, codes)
+  factor(id, levels = unique(id[o][ok[o]]))
+}
+
+jp_split_keys <- function(keys) {
+  split(seq_len(nrow(as.data.frame(keys))), jp_key_factor(keys))
+}

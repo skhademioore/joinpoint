@@ -45,8 +45,9 @@ by-variables. The test is carried out with
 selected for each cohort and \code{K0} the number selected for the two cohorts
 fitted together under the null hypothesis. For each pair whose test
 rejects the null hypothesis (after any p value adjustment) the AAPCs of
-the two cohorts of a log-linear fit are compared by a z test with
-parametric variances, also
+the two cohorts of a log-linear fit are compared by a z test of their
+difference in percentage points, with the delta method standard error
+that also gives its confidence interval, and parametric variances, also
 when the fit used empirical quantile intervals; these follow-up p values
 are not adjusted.
 }

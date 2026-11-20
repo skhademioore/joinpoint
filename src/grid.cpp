@@ -135,11 +135,26 @@ List jp_grid_cpp(NumericMatrix G, NumericMatrix Bt, NumericVector yy, int p0,
                  int kmax, IntegerVector first_ok, IntegerVector last_ok,
                  IntegerVector next_min, bool profile = false,
                  double tol = 1e-10) {
+  // Check the dimensions before any raw pointer indexing.
+  const int q = G.nrow();
+  if (G.ncol() != q || p0 < 0 || p0 > q || Bt.ncol() != q ||
+      yy.size() != Bt.nrow()) {
+    stop("inconsistent cross product dimensions");
+  }
+  const int m = q - p0;
+  if (first_ok.size() != m || last_ok.size() != m || next_min.size() != m) {
+    stop("constraint vectors must have one entry per candidate");
+  }
+  for (int j = 0; j < m; j++) {
+    if (next_min[j] == NA_INTEGER || next_min[j] <= j || next_min[j] > m) {
+      stop("invalid next_min constraint");
+    }
+  }
   GridState s;
   s.profile = profile;
-  s.q = G.nrow();
+  s.q = q;
   s.p0 = p0;
-  s.m = s.q - p0;
+  s.m = m;
   s.nd = Bt.nrow();
   if (kmax > s.m) kmax = s.m;
   if (kmax < 0) kmax = 0;

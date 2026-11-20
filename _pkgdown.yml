@@ -55,7 +55,7 @@ reference:
   contents:
   - as.data.frame.joinpoint
   - predict.joinpoint
-  - vcov.joinpoint
+  - coef.joinpoint
 
 - title: Comparing and clustering trends
   desc: >

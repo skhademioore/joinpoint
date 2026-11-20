@@ -17,8 +17,9 @@ jp_glm_data <- function(inc, family, rate_per) {
 
 # Maximum likelihood fit with fixed joinpoints; coefficients refer to the
 # original x. `ok` is FALSE when the estimates do not exist or were not
-# found: no convergence, a singular design, or fitted values of 0 (or 1),
-# as under complete separation.
+# found: no convergence, a singular design, or a likelihood that keeps
+# increasing along some direction (as under complete separation), detected
+# by `jp_glm_diverges()`.
 jp_glm_fit <- function(x, gd, family, tau, extra = NULL) {
   ctr <- mean(x)
   X <- jp_design(x - ctr, tau - ctr, extra)
@@ -30,7 +31,7 @@ jp_glm_fit <- function(x, gd, family, tau, extra = NULL) {
   eta <- drop(X %*% b)
   mu_eta <- fam$mu.eta(eta + gd$off)
   mu <- fam$linkinv(eta + gd$off)
-  eps <- 10 * .Machine$double.eps
+  found <- ft$converged && !ft$boundary && ft$rank == ncol(X)
   coef <- b
   coef[1L] <- b[1L] - b[2L] * ctr
   names(coef) <- colnames(X)
@@ -38,8 +39,24 @@ jp_glm_fit <- function(x, gd, family, tau, extra = NULL) {
        z = eta + (gd$y - mu) / mu_eta, deviance = ft$deviance,
        pearson = sum(gd$w * (gd$y - mu)^2 / fam$variance(mu)), X = X,
        ctr = ctr, tau = tau,
-       ok = ft$converged && !ft$boundary && ft$rank == ncol(X) &&
-         all(mu > eps) && (family == "poisson" || all(mu < 1 - eps)))
+       ok = found && !jp_glm_diverges(X, gd, fam, b))
+}
+
+# A finite maximum likelihood estimate is a fixed point of the scoring
+# iterations; without one (a likelihood that increases towards a boundary,
+# as under complete separation) further iterations keep moving the linear
+# predictor, by about one unit each. Small fitted means alone do not mean
+# that the estimate does not exist.
+jp_glm_diverges <- function(X, gd, fam, b, steps = 5L) {
+  more <- suppressWarnings(stats::glm.fit(
+    X, gd$y, weights = gd$w, offset = gd$off, family = fam, start = b,
+    control = stats::glm.control(epsilon = 1e-300, maxit = steps)
+  ))
+  b2 <- more$coefficients
+  if (anyNA(b2)) {
+    return(TRUE)
+  }
+  max(abs(X %*% (b2 - b))) > 0.5
 }
 
 jp_glm_family <- function(family) {
@@ -122,8 +139,9 @@ jp_glm_models <- function(x, gd, family, cand, cons, kmin, kmax, extra,
   bad <- ks[!vapply(fits, `[[`, logical(1), "ok")]
   if (length(bad)) {
     warning("No maximum likelihood estimate for ", paste(bad, collapse = ", "),
-            " joinpoints (no convergence, complete separation or fitted ",
-            "values of 0); Wald and joinpoint intervals withheld.",
+            " joinpoints (no convergence, or a likelihood that keeps ",
+            "increasing, as under complete separation); Wald and joinpoint ",
+            "intervals withheld.",
             call. = FALSE)
   }
   last <- fits[[length(fits)]]

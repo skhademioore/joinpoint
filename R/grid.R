@@ -72,20 +72,45 @@ jp_crossprod <- function(base, xh, cand, Y, W) {
 # Minimum weighted SSE (and its joinpoints) for every number of joinpoints
 # 0..kmax, for every column of Y. The fixed columns are an intercept, x and
 # the optional `extra` columns (jump indicators, group intercepts).
+#
+# For numerical stability the responses and the hinge columns are first
+# whitened and projected off the fixed columns by a QR decomposition; the
+# compiled search then works on these residuals, whose sums of squares are
+# the SSEs themselves rather than small differences of large sums (a large
+# common trend no longer swamps the differences between candidates). A
+# hinge column in the span of the fixed columns (to within rounding) cannot
+# enter a model.
 jp_grid_search <- function(x, Y, W, cand, cons, kmax, extra = NULL,
                            profile = FALSE) {
-  # Center and scale x for numerical stability; the SSE is unaffected.
   ctr <- mean(x)
   scl <- stats::sd(x)
   if (!is.finite(scl) || scl == 0) scl <- 1
   u <- (x - ctr) / scl
   base <- cbind(1, u, extra)
   Y <- as.matrix(Y)
-  shift <- if (is.matrix(W)) colMeans(Y) else colSums(Y * W) / sum(W)
-  Yc <- sweep(Y, 2L, shift)
-  cp <- jp_crossprod(base, u, (cand - ctr) / scl, Yc, W)
+  if (is.matrix(W)) {
+    U <- chol(W)
+    wh <- function(A) U %*% A
+  } else {
+    sw <- sqrt(W)
+    wh <- function(A) A * sw
+  }
+  qb <- qr(wh(base))
+  if (qb$rank < ncol(base)) {
+    stop("base design columns are linearly dependent", call. = FALSE)
+  }
+  Yr <- qr.resid(qb, wh(Y))
+  yy <- colSums(Yr^2)
+  if (kmax <= 0L || !length(cand)) {
+    return(list(sse = matrix(yy, ncol = 1L), idx = list(matrix(integer(0),
+                                                             ncol(Y), 0L)),
+                profile = list(NULL)))
+  }
+  Hw <- wh(outer(u, (cand - ctr) / scl, function(a, b) pmax(a - b, 0)))
+  Hr <- qr.resid(qb, Hw)
+  Hr[, colSums(Hr^2) <= 1e-14 * colSums(Hw^2)] <- 0
   jp_grid_cpp(
-    cp$G, t(cp$B), cp$yy, ncol(base), as.integer(kmax),
+    crossprod(Hr), crossprod(Yr, Hr), yy, 0L, as.integer(kmax),
     cons$first_ok, cons$last_ok, cons$next_min, profile
   )
 }

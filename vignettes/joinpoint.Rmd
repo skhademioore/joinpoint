@@ -82,7 +82,7 @@ summary of the epidemiological transition. On a logarithmic axis equal
 percent changes look equally steep within a panel; the panels have their
 own scales, so compare slopes across causes through their APCs.
 
-```{r, fig.height = 6, fig.alt = "Six panels, one per cause of death, of age adjusted death rates on logarithmic axes, with the fitted segments colored by whether the trend significantly increased, significantly decreased or was stable."}
+```{r, fig.height = 6, fig.alt = "Six panels, one per cause of death, of age adjusted death rates on logarithmic axes, with the fitted segments colored by whether the trend significantly increased, significantly decreased or did not change significantly."}
 autoplot(fit, color_by = "trend", log_y = TRUE) +
   labs(x = NULL, y = "Age adjusted death rate per 100,000")
 ```

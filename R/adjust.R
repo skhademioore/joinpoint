@@ -56,8 +56,7 @@ age_adjust <- function(data, x, count, population, age, standard, by = NULL,
     }
   }
   keys <- data[c(by, xn)]
-  grp <- interaction(keys, drop = TRUE, lex.order = TRUE)
-  out <- lapply(split(seq_len(nrow(data)), grp), function(i) {
+  out <- lapply(jp_split_keys(keys), function(i) {
     w <- std[i] / sum(std[i])
     data.frame(
       keys[i[1L], , drop = FALSE],
@@ -112,7 +111,7 @@ jp_check_age_data <- function(data, xn, an, by, cnt, pop, std, dl, rate_per) {
          "missing or invalid.", call. = FALSE)
   }
   cohort <- if (length(by)) {
-    interaction(data[by], drop = TRUE)
+    jp_key_factor(data[by])
   } else {
     factor(rep(1L, nrow(data)))
   }

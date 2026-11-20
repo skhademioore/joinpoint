@@ -6,7 +6,13 @@ jp_bic <- function(sse, n, k) log(sse / n) + 2 * (k + 1) * log(n) / n
 jp_bic3 <- function(sse, n, k) log(sse / n) + (3 * k + 2) * log(n) / n
 
 # Modified BIC adapted from Zhang and Siegmund (2007) to segmented line
-# regression. The determinant uses the whitened hinge design.
+# regression, as defined by the NCI Joinpoint program:
+# MBIC(k) = BIC(k) + ln det(X'X) / n - (2 / n) ln Gamma((n - k - 3) / 2)
+#   - ((k + 3) / n) ln SSE(k).
+# The determinant uses the whitened hinge design. Like the unknown variance
+# criterion of Zhang and Siegmund (2007, Theorem 2), it is not invariant to
+# the units of y (rescaling y by a shifts it by -(2 / n) ln a per joinpoint)
+# or of x.
 jp_mbic <- function(sse, n, k, Xw) {
   ld <- determinant(crossprod(Xw), logarithm = TRUE)$modulus
   jp_bic(sse, n, k) + as.numeric(ld) / n -
@@ -30,7 +36,11 @@ jp_local_stats <- function(x, y, S, model, sigma2_max = NA_real_,
     idx <- which(x > ext[i] & x <= ext[i + 2L])
     xi <- x[idx]
     U <- jp_whiten_mat(jp_subset_cov(S, idx))
-    X0 <- jp_apply_whiten(U, cbind(1, xi, extra[idx, , drop = FALSE]))
+    # Local time is centered and scaled, so that the statistics do not
+    # depend on the origin of x.
+    ui <- xi - mean(xi)
+    if (length(ui) > 1L && stats::sd(ui) > 0) ui <- ui / stats::sd(ui)
+    X0 <- jp_apply_whiten(U, cbind(1, ui, extra[idx, , drop = FALSE]))
     z <- drop(jp_apply_whiten(U, pmax(xi - tau[i], 0)))
     yy <- drop(jp_apply_whiten(U, y[idx]))
     q0 <- qr(X0)
@@ -50,7 +60,7 @@ jp_criteria <- function(x, y, S, models, method, extra = NULL) {
   ks <- vapply(models, `[[`, numeric(1), "k")
   sse <- vapply(models, `[[`, numeric(1), "sse")
   # Exact fits share the numerical zero, so the penalty decides among them.
-  tol <- jp_tiny(jp_whiten_mat(S), y)
+  tol <- jp_tiny(jp_whiten_mat(S), y, x)
   ls <- pmax(sse, tol)
   tab <- data.frame(
     joinpoints = ks, sse = sse,

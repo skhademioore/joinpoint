@@ -122,6 +122,11 @@ joinpoints <- function(object, model = "final") {
 #' and exact fits), the permutation or likelihood ratio tests performed, the
 #' data dependent selection details and the MADWD steps.
 #'
+#' The penalties of BIC, BIC3 and WBIC count the parameters of the trend:
+#' intercept, slopes and joinpoints. Jump and covariate coefficients, common
+#' to all models of a fit, are not counted, so the criteria compare numbers
+#' of joinpoints within a fit but not fits with different adjustments.
+#'
 #' @param object A `joinpoint` object.
 #' @return A list with data frames `criteria`, `tests`, `dds` and `madwd`
 #'   (the last three may be `NULL`), and `selected` with the selected number
@@ -147,15 +152,22 @@ model_selection <- function(object) {
     # residuals (values well below 2 suggest positive autocorrelation); both
     # are undefined for a constant series or an exact fit.
     U <- jp_whiten_mat(f$S)
-    tol <- jp_tiny(U, f$y)
+    tol <- jp_tiny(U, f$y, f$x)
     sst <- sum(qr.resid(qr(jp_apply_whiten(U, rep(1, length(f$y)))),
                         drop(jp_apply_whiten(U, f$y)))^2)
     tab$r_squared <- vapply(f$models, function(mm) {
       if (is.finite(mm$df) && sst > tol) 1 - mm$sse / sst else NA_real_
     }, numeric(1))
+    # The zero test is on the scale of the residuals themselves: the
+    # Pearson residuals of likelihood fits do not depend on rate_per.
+    tol_dw <- if (object$settings$family == "gaussian") {
+      tol
+    } else {
+      length(f$y) * .Machine$double.eps
+    }
     tab$durbin_watson <- vapply(f$models, function(mm) {
       e2 <- sum(mm$wresid^2)
-      if (e2 > tol) sum(diff(mm$wresid)^2) / e2 else NA_real_
+      if (e2 > tol_dw) sum(diff(mm$wresid)^2) / e2 else NA_real_
     }, numeric(1))
     tab$selected <- tab$joinpoints == f$k_selected
     tab
@@ -261,7 +273,8 @@ as.data.frame.joinpoint <- function(x, row.names = NULL, optional = FALSE,
 
 #' @export
 fitted.joinpoint <- function(object, model = "final", ...) {
-  stats::predict(object, model = model)$fit
+  p <- stats::predict(object, model = model)
+  p[[ncol(p)]]
 }
 
 #' @export
@@ -294,25 +307,48 @@ jp_by_cohort <- function(object, model, fun) {
   if (length(out) == 1L) out[[1L]] else out
 }
 
-#' @export
-coef.joinpoint <- function(object, model = "final", ...) {
-  jp_by_cohort(object, model, function(m) m$coef)
-}
-
-#' Covariance of the segment parameters
+#' Coefficients and their covariance
 #'
-#' Covariance matrix of the segment intercepts and slopes and of any jump and
-#' covariate coefficients, from the unconstrained segment fit used for the
-#' standard errors (the Wald covariance for Poisson and binomial fits).
+#' `coef()` returns, by default, the segment intercepts and slopes followed
+#' by any jump and covariate coefficients, the parameters whose covariance
+#' `vcov()` returns: names and order agree. The covariance is that of the
+#' unconstrained segment fit used for the standard errors (the Wald
+#' covariance for Poisson and binomial fits). `type = "hinge"` gives instead
+#' the coefficients of the continuous fit in its hinge form: intercept,
+#' first slope and the slope changes `delta1`, `delta2`, ... at the
+#' joinpoints.
 #'
 #' @param object A `joinpoint` object.
 #' @param model `"final"` or a number of joinpoints.
+#' @param type `"segment"` or `"hinge"` (for `coef()`).
 #' @param ... Ignored.
-#' @return A matrix, or a list of matrices named by cohort.
+#' @return A vector or matrix, or a list of them named by cohort.
 #' @examples
 #' tb <- subset(us_mortality, cause == "Tuberculosis")
 #' fit <- joinpoint(tb, year, rate, kmax = 2, ci_method = "parametric")
+#' coef(fit)
 #' vcov(fit)
+#' coef(fit, type = "hinge")
+#' @name coef.joinpoint
+#' @export
+coef.joinpoint <- function(object, model = "final",
+                           type = c("segment", "hinge"), ...) {
+  type <- match.arg(type)
+  jp_by_cohort(object, model, function(m) {
+    if (type == "hinge") {
+      return(m$coef)
+    }
+    nseg <- m$k + 1L
+    b <- c(as.vector(rbind(m$intercepts, m$slopes)),
+           m$coef[m$extra_names])
+    names(b) <- c(as.vector(rbind(paste("Intercept", seq_len(nseg)),
+                                  paste("Slope", seq_len(nseg)))),
+                  m$extra_names)
+    b
+  })
+}
+
+#' @rdname coef.joinpoint
 #' @export
 vcov.joinpoint <- function(object, model = "final", ...) {
   jp_by_cohort(object, model, jp_vcov)
@@ -348,7 +384,9 @@ nobs.joinpoint <- function(object, ...) {
 #' @param model `"final"` or a number of joinpoints.
 #' @param scale `"response"` (original scale) or `"link"` (model scale).
 #' @param ... Ignored.
-#' @return A data frame with cohort keys, `x` and `fit`.
+#' @return A data frame with cohort keys, `x` and `fit`. With `newdata`, one
+#'   row per row of `newdata`, in its order; rows whose by-variable values
+#'   match no fitted cohort get a missing `fit`.
 #' @examples
 #' tb <- subset(us_mortality, cause == "Tuberculosis")
 #' fit <- joinpoint(tb, year, rate, kmax = 2, ci_method = "parametric")
@@ -358,30 +396,38 @@ predict.joinpoint <- function(object, newdata = NULL, model = "final",
                               scale = c("response", "link"), ...) {
   scale <- match.arg(scale)
   xn <- object$settings$x
+  cv <- object$settings$covariates
+  # Cohort of each row of newdata, matched on the tuple of by-variable
+  # values (missing or unknown keys match no cohort).
+  if (!is.null(newdata)) {
+    need <- c(xn, object$by, if (!is.null(cv)) all.vars(cv))
+    if (!all(need %in% names(newdata))) {
+      stop("`newdata` needs the columns ", paste(need, collapse = ", "),
+           ".", call. = FALSE)
+    }
+    row_cohort <- if (is.null(object$by)) {
+      rep(1L, nrow(newdata))
+    } else {
+      tup <- function(df) {
+        id <- do.call(paste, c(lapply(df, as.character), sep = "\r"))
+        id[!stats::complete.cases(df)] <- NA
+        id
+      }
+      match(tup(newdata[object$by]), tup(object$cohorts[object$by]))
+    }
+  }
   out <- lapply(seq_along(object$fits), function(g) {
     f <- object$fits[[g]]
     if (is.null(f)) {
       return(NULL)
     }
     m <- jp_pick(f, model)
-    cv <- object$settings$covariates
     Z <- f$covariates
     xv <- if (is.null(newdata)) {
       f$data$x
     } else {
-      nd <- newdata
-      need <- c(xn, object$by, if (!is.null(cv)) all.vars(cv))
-      if (!all(need %in% names(nd))) {
-        stop("`newdata` needs the columns ", paste(need, collapse = ", "),
-             ".", call. = FALSE)
-      }
-      if (!is.null(object$by)) {
-        key <- object$cohorts[g, , drop = FALSE]
-        keep <- Reduce(`&`, lapply(names(key), function(v) {
-          nd[[v]] == key[[v]]
-        }))
-        nd <- nd[keep, , drop = FALSE]
-      }
+      rows <- which(row_cohort %in% g)
+      nd <- newdata[rows, , drop = FALSE]
       if (!is.null(cv)) {
         ci <- f$covariate_info
         mf <- stats::model.frame(ci$terms, nd, xlev = ci$xlev,
@@ -401,9 +447,21 @@ predict.joinpoint <- function(object, newdata = NULL, model = "final",
     }
     key <- object$cohorts[rep(g, length(xv)), , drop = FALSE]
     rownames(key) <- NULL
-    cbind(key, data.frame(x = xv, fit = fit))
+    res <- cbind(key, data.frame(x = xv, fit = fit))
+    if (!is.null(newdata)) res$.row <- rows
+    res
   })
-  do.call(rbind, out)
+  out <- do.call(rbind, out)
+  if (is.null(newdata)) {
+    return(out)
+  }
+  # One row per row of newdata, in its order.
+  res <- newdata[object$by]
+  res$x <- newdata[[xn]] + object$settings$shift
+  res$fit <- NA_real_
+  if (!is.null(out)) res$fit[out$.row] <- out$fit
+  rownames(res) <- NULL
+  res
 }
 
 jp_cohort_label <- function(object, g) {
@@ -478,8 +536,15 @@ print.joinpoint <- function(x, digits = 3, ...) {
     }
     for (nt in f$notes) cat("  Note: ", nt, "\n", sep = "")
   }
-  cat("\n* Significantly different from zero at alpha = ",
-      s$control$alpha_apc, ".\n", sep = "")
+  ctl <- s$control
+  if (ctl$alpha_apc == ctl$alpha_aapc) {
+    cat("\n* Significantly different from zero at alpha = ",
+        ctl$alpha_apc, ".\n", sep = "")
+  } else {
+    cat("\n* Significantly different from zero: ", nm$apc_abbr,
+        " at alpha = ", ctl$alpha_apc, ", ", nm$aapc_abbr, " at alpha = ",
+        ctl$alpha_aapc, ".\n", sep = "")
+  }
   invisible(x)
 }
 
@@ -516,7 +581,9 @@ print.summary.joinpoint <- function(x, ...) {
 #' Formats the APCs of the segments (slopes for linear models) and the
 #' AAPCs (AACs) of the final, or a given, model as a character table with
 #' estimates, confidence intervals and p values, ready for
-#' `knitr::kable()` or other table packages.
+#' `knitr::kable()` or other table packages. With `model = "all"`, the
+#' columns `Model` (number of joinpoints) and `Final` identify the model of
+#' each row.
 #'
 #' @inheritParams apc
 #' @param digits Decimals of estimates and confidence limits.
@@ -537,9 +604,20 @@ jp_table <- function(object, model = "final", digits = 2, aapc = TRUE) {
            jp_fmt(d$lower, digits), ", ", jp_fmt(d$upper, digits), ")")
   }
   keys <- object$by
+  # With every model, the number of joinpoints and the final model flag
+  # identify the rows of each model.
+  all_models <- identical(model, "all")
+  id <- function(d) {
+    if (all_models) {
+      data.frame(Model = d$model, Final = ifelse(d$final, "Yes", ""),
+                 check.names = FALSE)
+    } else {
+      data.frame(row.names = seq_len(nrow(d)))
+    }
+  }
   a <- apc(object, model)
   out <- data.frame(
-    a[keys], Trend = paste("Segment", a$segment),
+    a[keys], id(a), Trend = paste("Segment", a$segment),
     Period = paste0(format(a$start), "-", format(a$end)),
     Estimate = est(a), p = pv(a$p_value), check.names = FALSE
   )
@@ -547,7 +625,7 @@ jp_table <- function(object, model = "final", digits = 2, aapc = TRUE) {
     b <- aapc(object, model)
     if (!is.null(b)) {
       out <- rbind(out, data.frame(
-        b[keys], Trend = nm$aapc_abbr,
+        b[keys], id(b), Trend = nm$aapc_abbr,
         Period = paste0(format(b$start), "-", format(b$end)),
         Estimate = est(b), p = pv(b$p_value), check.names = FALSE
       ))
@@ -563,7 +641,8 @@ jp_table <- function(object, model = "final", digits = 2, aapc = TRUE) {
   } else {
     paste0(first, ci(ctl$alpha_apc), " / ", nm$aapc_abbr, ci(ctl$alpha_aapc))
   }
-  if (length(keys)) out <- out[do.call(order, unname(out[keys])), ]
+  ord <- c(keys, if (all_models) "Model")
+  if (length(ord)) out <- out[do.call(order, unname(out[ord])), ]
   rownames(out) <- NULL
   out
 }
@@ -573,6 +652,8 @@ jp_table <- function(object, model = "final", digits = 2, aapc = TRUE) {
 #' For jump models (see the `jump` argument of [joinpoint()]), the estimated
 #' jump on the log scale and the comparability ratio `exp(jump)` with
 #' standard errors, confidence intervals and tests (null values 0 and 1).
+#' For binomial fits the jump is on the logit scale and `exp(jump)` is an
+#' odds ratio, labeled as such.
 #'
 #' @inheritParams apc
 #' @return A data frame, or `NULL` when no jump model was fitted.

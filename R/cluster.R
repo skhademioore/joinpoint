@@ -59,12 +59,27 @@ jp_parallel_fit <- function(x, DC, D2C, P, cols, method, ctrl, kmin, kmax,
 #' clusters with minimum total residual sum of squares, selection of `m` by
 #' BIC, and optional clustering MADWD.
 #'
+#' Every contiguous block of age groups is searched for joinpoints in the
+#' first stage. With `kmax = NULL` the recommended maximum is lowered, with
+#' a message, when that search would exceed the time budget of [jp_control()]
+#' for all blocks together; an explicit `kmax` is kept, with a message giving
+#' the expected time when it exceeds the budget.
+#'
 #' @inheritParams age_adjust
 #' @param data A data frame with one row per age group and time point (and
 #'   cohort).
 #' @param min_count Age groups are combined until counts exceed this value
 #'   at every time point.
 #' @param compression `"forward"` or `"backward"` count compression.
+#' @param standardize Age groups of the direct standardization of the final
+#'   cluster rates: `"original"` (default) standardizes each cluster with its
+#'   original age groups, their own rates and standard weights, as
+#'   [age_adjust()] does; `"compressed"` uses the compressed age groups, as
+#'   the NCI Joinpoint program does. Compression pools the counts and
+#'   populations of the merged age groups, so when their population shares
+#'   change over time the compressed rates can show a trend that no original
+#'   age-specific rate has. Compression always serves the choice of the
+#'   clusters.
 #' @param method Method for the number of joinpoints within clustering:
 #'   `"wbic"`, `"bic"`, `"bic3"` or `"permutation"`.
 #' @param max_clusters Maximum number of clusters (default: number of
@@ -99,9 +114,30 @@ jp_cluster <- function(data, x, count, population, age, standard, by = NULL,
                        method = c("wbic", "bic", "bic3", "permutation"),
                        max_clusters = NULL, madwd = NULL, kmin = 0,
                        kmax = NULL, final_method = "wbic",
-                       rate_per = 100000, control = jp_control(), ...) {
+                       rate_per = 100000, control = jp_control(),
+                       standardize = c("original", "compressed"), ...) {
   compression <- match.arg(compression)
   method <- match.arg(method)
+  standardize <- match.arg(standardize)
+  whole <- function(v, lo, name, null_ok = TRUE) {
+    if (is.null(v) && null_ok) return(invisible())
+    if (!is.numeric(v) || length(v) != 1L || is.na(v) || v != round(v) ||
+        v < lo) {
+      stop("`", name, "` must be a whole number of at least ", lo, ".",
+           call. = FALSE)
+    }
+  }
+  whole(max_clusters, 1, "max_clusters")
+  whole(kmin, 0, "kmin", FALSE)
+  whole(kmax, 0, "kmax")
+  if (!is.numeric(min_count) || length(min_count) != 1L ||
+      is.na(min_count) || min_count < 0) {
+    stop("`min_count` must be a nonnegative number.", call. = FALSE)
+  }
+  if (!is.null(madwd) && (!is.numeric(madwd) || length(madwd) != 1L ||
+                          is.na(madwd) || madwd < 0)) {
+    stop("`madwd` must be NULL or a nonnegative number.", call. = FALSE)
+  }
   xn <- jp_col(substitute(x), data, "x")
   cn <- jp_col(substitute(count), data, "count")
   pn <- jp_col(substitute(population), data, "population")
@@ -128,7 +164,7 @@ jp_cluster <- function(data, x, count, population, age, standard, by = NULL,
     u[order(lead)]
   }
   cohorts <- if (is.null(by)) list(seq_len(nrow(data))) else {
-    split(seq_len(nrow(data)), data[by], drop = TRUE, lex.order = TRUE)
+    unname(jp_split_keys(data[by]))
   }
   res <- lapply(cohorts, function(i) {
     d <- data[i, , drop = FALSE]
@@ -148,7 +184,8 @@ jp_cluster <- function(data, x, count, population, age, standard, by = NULL,
            call. = FALSE)
     }
     jp_cluster_one(x, C, P, D, Sd[1L, ], ages, min_count, compression, method,
-                   max_clusters, madwd, kmin, kmax, control, rate_per)
+                   max_clusters, madwd, kmin, kmax, control, rate_per,
+                   standardize)
   })
   keys <- if (is.null(by)) NULL else {
     do.call(rbind, lapply(cohorts, function(i) data[i[1L], by, drop = FALSE]))
@@ -177,7 +214,7 @@ jp_cluster <- function(data, x, count, population, age, standard, by = NULL,
 
 jp_cluster_one <- function(x, C, P, D, std, ages, min_count, compression,
                            method, max_clusters, madwd, kmin, kmax, ctrl,
-                           rate_per) {
+                           rate_per, standardize = "original") {
   blocks <- jp_compress(C, min_count, compression)
   if (length(blocks) == 1L && any(rowSums(C) <= min_count)) {
     stop("Counts are too small even after combining all age groups.",
@@ -199,9 +236,9 @@ jp_cluster_one <- function(x, C, P, D, std, ages, min_count, compression,
   Sc <- vapply(blocks, function(b) sum(std[b]), numeric(1))
   G <- length(blocks)
   nt <- length(x)
-  kmax <- if (is.null(kmax)) jp_recommended_kmax(nt) else kmax
   cand <- jp_candidates(x, ctrl$n_grid)
   cons <- jp_constraints(x, cand, ctrl$min_obs_end, ctrl$min_obs_between)
+  kmax <- jp_cluster_kmax(kmax, kmin, nt, G, cons, method, ctrl)
 
   fits <- list()
   key <- function(i, j) paste(i, j)
@@ -296,14 +333,28 @@ jp_cluster_one <- function(x, C, P, D, std, ages, min_count, compression,
 
   final <- if (m_best == 1L) list(seq_len(G)) else partition(m_best)
   cl_lab <- vapply(final, blk_lab, "")
+  # The age adjusted rate of each cluster: direct standardization of its
+  # original age groups (their own counts, populations, delay factors and
+  # standard weights, as age_adjust() computes it) or of its compressed
+  # age groups.
   rates <- do.call(rbind, lapply(seq_along(final), function(c) {
-    b <- final[[c]]
-    w <- Sc[b] / sum(Sc[b])
-    Pb <- Pc[, b, drop = FALSE]
+    if (standardize == "original") {
+      a <- unlist(blocks[final[[c]]])
+      w <- std[a] / sum(std[a])
+      Pa <- P[, a, drop = FALSE]
+      dc <- D[, a, drop = FALSE] * C[, a, drop = FALSE]
+      d2c <- D[, a, drop = FALSE]^2 * C[, a, drop = FALSE]
+    } else {
+      b <- final[[c]]
+      w <- Sc[b] / sum(Sc[b])
+      Pa <- Pc[, b, drop = FALSE]
+      dc <- DCc[, b, drop = FALSE]
+      d2c <- D2Cc[, b, drop = FALSE]
+    }
     data.frame(
       cluster = cl_lab[c], x = x,
-      rate = rate_per * drop((DCc[, b, drop = FALSE] / Pb) %*% w),
-      se = rate_per * sqrt(drop((D2Cc[, b, drop = FALSE] / Pb^2) %*% w^2))
+      rate = rate_per * drop((dc / Pa) %*% w),
+      se = rate_per * sqrt(drop((d2c / Pa^2) %*% w^2))
     )
   }))
   rates$cluster <- factor(rates$cluster, cl_lab)
@@ -319,6 +370,42 @@ jp_cluster_one <- function(x, C, P, D, std, ages, min_count, compression,
       age_group = lab[unlist(final)]
     )
   )
+}
+
+# Number of joinpoints searched for every contiguous block of the first
+# stage, under one time budget for all G (G + 1) / 2 blocks together.
+jp_cluster_kmax <- function(kmax, kmin, nt, G, cons, method, ctrl) {
+  rec <- jp_recommended_kmax(nt)
+  cnt <- jp_node_counts(cons, max(rec, kmax, kmin))
+  nodes <- c(1, 1 + cumsum(cnt$nodes))
+  feasible <- min(sum(cumprod(cnt$models > 0)), max(0, floor((nt - 3) / 2)))
+  blocks <- G * (G + 1) / 2
+  cost <- function(k) {
+    blocks * nodes[k + 1L] * (2.5e-7 + (method == "permutation") * 1.5e-8 *
+                                ctrl$n_perm * max(1, k - kmin))
+  }
+  secs <- function(k) format(signif(cost(k), 2))
+  if (is.null(kmax)) {
+    k0 <- kmax <- min(rec, feasible)
+    while (kmax > kmin && cost(kmax) > ctrl$time_budget) kmax <- kmax - 1
+    if (kmax < k0) {
+      message(sprintf(paste(
+        "Clustering: recommended maximum of %d joinpoints lowered to %d to",
+        "keep the search of the %d age group blocks within about %s",
+        "seconds; set kmax to override."
+      ), k0, kmax, blocks, format(signif(ctrl$time_budget, 2))))
+    }
+  } else if (kmax <= length(cnt$nodes) && cost(kmax) > ctrl$time_budget) {
+    message(sprintf(paste(
+      "Clustering: searching %d joinpoints in each of %d age group blocks",
+      "is expected to take about %s seconds."
+    ), kmax, blocks, secs(kmax)))
+  }
+  if (kmin > kmax) {
+    stop("`kmin` exceeds the largest feasible number of joinpoints (", kmax,
+         ").", call. = FALSE)
+  }
+  kmax
 }
 
 # Duration weighted mean absolute APC difference of two fits over [a, b].

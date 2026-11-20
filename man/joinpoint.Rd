@@ -31,6 +31,7 @@ joinpoint(
   jump = NULL,
   comparability_ratio = NULL,
   cr_variance = 0,
+  cr_covariance = c("shared", "nci"),
   interval = "Annual",
   control = jp_control()
 )
@@ -47,7 +48,9 @@ May be omitted when \code{count} and \code{population} are given.}
 \item{by}{Optional character vector of by-variables defining cohorts.}
 
 \item{se}{Optional column of standard errors of \code{y} (on the original
-scale).}
+scale). As in weighted least squares, they give the relative variances
+of the observations (the weights); the residual variance scale is
+estimated from the data.}
 
 \item{count, population}{Optional columns of counts and populations (or
 numerators and denominators) used to calculate crude rates, proportions
@@ -74,10 +77,15 @@ linear model \code{y = xb} (\code{FALSE}).}
 \code{"se"} when standard errors are available and \code{"constant"} otherwise.}
 
 \item{autocorrelation}{First order autocorrelation of the errors: a number
-in (-1, 1), or \code{"estimate"} to estimate it from the data.}
+in (-1, 1), or \code{"estimate"} to estimate it from the data. Lags count the
+observations of the cohort in time order, excluded ones included, so the
+observations are assumed equally spaced.}
 
-\item{vcov}{Optional variance-covariance matrix of the responses (single
-cohort only).}
+\item{vcov}{Optional variance-covariance matrix of the responses, with one
+row and column per row of \code{data} (single cohort only). Like \code{se}, it
+gives the relative covariance of the errors; the residual variance
+scale is estimated from the data. It cannot be combined with
+\code{autocorrelation}.}
 
 \item{kmin, kmax}{Minimum and maximum number of joinpoints. \code{kmax = NULL}
 uses the recommended maximum for the number of observations.}
@@ -86,7 +94,8 @@ uses the recommended maximum for the number of observations.}
 \code{"bic"}, \code{"bic3"}, \code{"mbic"} (modified BIC), \code{"dds"} (data dependent
 selection) or \code{"permutation"} for least squares fits; \code{"wbic"},
 \code{"bic"}, \code{"bic3"} or \code{"lrt"} (sequential Monte Carlo likelihood ratio
-test) for Poisson and binomial fits.}
+test) for Poisson and binomial fits. The modified BIC follows the NCI
+Joinpoint definition, which depends on the units of \code{y} and \code{x}.}
 
 \item{ci_method}{Confidence interval method for APCs, AAPCs and joinpoint
 locations: \code{"empirical"} (empirical quantile, the default for least
@@ -94,7 +103,12 @@ squares fits with grid joinpoints) or \code{"parametric"} (the only method for
 Poisson and binomial fits and for continuous joinpoints). Parametric
 intervals condition on the estimated joinpoints, except the interval of
 a joinpoint location; for Poisson and binomial fits they are Wald
-intervals and the joinpoint interval is based on the profile deviance.}
+intervals and the joinpoint interval is based on the profile deviance.
+Ignoring the uncertainty of estimated joinpoints, parametric intervals
+of segment trends can cover less often than their nominal level,
+especially for small slope changes. Empirical quantile intervals
+re-estimate the joinpoints in every resample. All intervals condition
+on the selected number of joinpoints.}
 
 \item{covariates}{Optional one-sided formula of covariates adjusted for in
 every segment, for example \code{~ factor(month)} for seasonality. The
@@ -120,7 +134,8 @@ at least 1. It scales the Wald covariances and the deviances in the
 criteria and is reported by \code{\link[=model_selection]{model_selection()}}.}
 
 \item{exclude}{Values of \code{x} to exclude from model fitting. Excluded
-points are kept in the data and graphs.}
+points are kept in the data and graphs; their responses are not checked
+or transformed, so an excluded zero does not prevent a log-linear fit.}
 
 \item{shift}{Constant added to \code{x} before fitting.}
 
@@ -129,7 +144,18 @@ coding. Fits the jump model, or the comparability ratio model when
 \code{comparability_ratio} is given.}
 
 \item{comparability_ratio, cr_variance}{Comparability ratio (new coding
-over old coding) and its variance for the comparability ratio model.}
+over old coding) and its variance for the comparability ratio model.
+Every observation before the change is multiplied by the ratio.}
+
+\item{cr_covariance}{How the uncertainty of the comparability ratio
+enters the error covariance. \code{"shared"} (default): the one estimated
+ratio multiplies every old coding observation, so by the delta method
+it adds \code{cr_variance / comparability_ratio^2} to the covariance of every
+pair of them on the log scale (with constant variance, after the
+residual variance is estimated from the largest model). \code{"nci"}: as the
+NCI Joinpoint program, the variance of each adjusted old coding rate
+becomes \verb{CR^2 Var(r) + r^2 cr_variance}, independently for each
+observation, and \code{cr_variance} is not used with constant variance.}
 
 \item{interval}{Interval label of \code{x} used in output, e.g. \code{"Annual"} or
 \code{"Monthly"}.}

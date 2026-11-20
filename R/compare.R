@@ -49,8 +49,9 @@ jp_light_select <- function(x, y, S, models, method, ctrl, cand, cons,
 #' selected for each cohort and `K0` the number selected for the two cohorts
 #' fitted together under the null hypothesis. For each pair whose test
 #' rejects the null hypothesis (after any p value adjustment) the AAPCs of
-#' the two cohorts of a log-linear fit are compared by a z test with
-#' parametric variances, also
+#' the two cohorts of a log-linear fit are compared by a z test of their
+#' difference in percentage points, with the delta method standard error
+#' that also gives its confidence interval, and parametric variances, also
 #' when the fit used empirical quantile intervals; these follow-up p values
 #' are not adjusted.
 #'
@@ -81,6 +82,20 @@ jp_compare <- function(object, type = c("parallel", "coincidence"),
                        p_adjust = "none") {
   stopifnot(inherits(object, "joinpoint"))
   type <- match.arg(type)
+  p_adjust <- match.arg(p_adjust, stats::p.adjust.methods)
+  if (!(is.numeric(alpha) && length(alpha) == 1L && isTRUE(alpha > 0 &&
+                                                          alpha < 1))) {
+    stop("`alpha` must be a number in (0, 1).", call. = FALSE)
+  }
+  if (!(is.numeric(n_perm) && length(n_perm) == 1L && is.finite(n_perm) &&
+        n_perm >= 1 && n_perm == round(n_perm))) {
+    stop("`n_perm` must be a positive whole number.", call. = FALSE)
+  }
+  if (!(is.null(seed) || (is.numeric(seed) && length(seed) == 1L &&
+                          is.finite(seed) && seed == round(seed) &&
+                          abs(seed) <= .Machine$integer.max))) {
+    stop("`seed` must be NULL or a whole number.", call. = FALSE)
+  }
   s <- object$settings
   if (is.null(object$by)) {
     stop("Pairwise comparison needs at least one by-variable.", call. = FALSE)
@@ -98,7 +113,7 @@ jp_compare <- function(object, type = c("parallel", "coincidence"),
   inner <- utils::tail(object$by, 1L)
   outer <- setdiff(object$by, inner)
   strata <- if (length(outer)) {
-    interaction(keys[outer], drop = TRUE, lex.order = TRUE)
+    jp_key_factor(keys[outer])
   } else {
     factor(rep("All", nrow(keys)))
   }
@@ -133,9 +148,9 @@ jp_compare <- function(object, type = c("parallel", "coincidence"),
   }
   rej <- out$p_value < alpha
   out$result <- if (type == "parallel") {
-    ifelse(rej, "Not parallel", "Parallel")
+    ifelse(rej, "Not parallel", "Parallelism not rejected")
   } else {
-    ifelse(rej, "Not coincident", "Coincident")
+    ifelse(rej, "Not coincident", "Coincidence not rejected")
   }
   aapcs <- lapply(which(rej & s$log), function(i) {
     pr <- nulls[[i]]$cohorts
@@ -155,7 +170,7 @@ jp_compare_pair <- function(object, i1, i2, type, alpha, n_perm, seed,
                             ctrl) {
   f1 <- object$fits[[i1]]
   f2 <- object$fits[[i2]]
-  if (!isTRUE(all.equal(f1$x, f2$x))) {
+  if (length(f1$x) != length(f2$x) || any(f1$x != f2$x)) {
     stop("Compared cohorts must have the same independent variable values.",
          call. = FALSE)
   }
@@ -184,8 +199,12 @@ jp_compare_pair <- function(object, i1, i2, type, alpha, n_perm, seed,
   n <- length(y)
   d1 <- if (type == "parallel") 2 * K + 1 else 2 * K + 2
   d2 <- n - 2 * (2 * K + 2)
+  if (d2 <= 0) {
+    stop("Too few observations to compare models with ", K,
+         " joinpoints.", call. = FALSE)
+  }
   U <- jp_whiten_mat(S)
-  tol <- jp_tiny(U, y)
+  tol <- jp_tiny(U, y, x)
   fstat <- function(r0, r1) (jp_ratio(r0, r1, tol) - 1) * d2 / d1
   stat <- fstat(rss0, rss1)
   ew <- drop(jp_apply_whiten(U, m0$resid))
@@ -197,14 +216,15 @@ jp_compare_pair <- function(object, i1, i2, type, alpha, n_perm, seed,
       sep_fit(Ys[grp == 1, , drop = FALSE], f2$x, f2$S)
     fstat(r0, r1)
   })
-  p <- (sum(pstat >= stat * (1 - 1e-10)) + 1) / (n_perm + 1)
+  pstat <- pstat[!is.na(pstat)]
+  p <- (sum(jp_reaches(pstat, stat)) + 1) / (length(pstat) + 1)
   test <- data.frame(
     test = type, joinpoints = K, k_null = k0, k_group1 = f1$k_selected,
     k_group2 = f2$k_selected, statistic = stat, df1 = d1, df2 = d2,
     p_value = p, alpha = alpha
   )
   list(test = test,
-       null = list(model = null_models[[as.character(k0)]], x = x, grp = grp))
+       null = list(model = m0, x = x, grp = grp))
 }
 
 # AAPC comparison of two independent groups over the same ranges.
@@ -221,8 +241,9 @@ jp_compare_aapc <- function(f1, f2, alpha) {
   d <- a1$estimate - a2$estimate
   se_d <- 100 * sqrt(exp(2 * a1$log_estimate) * a1$se_log^2 +
                        exp(2 * a2$log_estimate) * a2$se_log^2)
-  zstat <- (a1$log_estimate - a2$log_estimate) /
-    sqrt(a1$se_log^2 + a2$se_log^2)
+  # The test and the interval use the same percentage point difference and
+  # its delta method standard error, so they always agree.
+  zstat <- d / se_d
   data.frame(
     range = common, aapc1 = a1$estimate, aapc2 = a2$estimate,
     difference = d, lower = d - z * se_d, upper = d + z * se_d,
@@ -308,7 +329,9 @@ autoplot.jp_comparison <- function(object, log_y = FALSE, ...) {
     scale_color_joinpoint(name = NULL) +
     ggplot2::facet_wrap(~panel, scales = "free_y") +
     ggplot2::labs(x = jp_title(fit$settings$x), y = jp_ylab(fit$settings),
-                  caption = "Solid: separate fits; dashed: fit under the null hypothesis.") +
+                  caption = paste("Solid: separately selected fits; dashed: fit under",
+                                  "the null hypothesis, with the joinpoints",
+                                  "of the test.")) +
     theme_joinpoint()
   if (log_y) g <- g + ggplot2::scale_y_log10()
   g

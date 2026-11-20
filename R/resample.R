@@ -12,8 +12,10 @@ jp_grid_batch <- function(x, Y, S, cand, cons, kmax, extra = NULL,
     cols <- s:min(nd, s + chunk - 1L)
     r <- jp_grid_search(x, Y[, cols, drop = FALSE], W, cand, cons, kmax,
                         extra)
-    sse[cols, ] <- r$sse[, seq_len(kmax + 1L), drop = FALSE]
-    for (k in seq_len(kmax)) idx[[k + 1L]][cols, ] <- r$idx[[k + 1L]]
+    # The compiled search lowers kmax to the number of candidates.
+    kk <- ncol(r$sse) - 1L
+    sse[cols, seq_len(kk + 1L)] <- r$sse
+    for (k in seq_len(kk)) idx[[k + 1L]][cols, ] <- r$idx[[k + 1L]]
   }
   list(sse = sse, idx = idx)
 }
@@ -45,7 +47,7 @@ jp_permutation_select <- function(x, S, models, cand, cons, kmin, kmax,
                                   n_exceed = NULL) {
   ks <- vapply(models, `[[`, numeric(1), "k")
   U <- jp_whiten_mat(S)
-  tol <- jp_tiny(U, models[[1L]]$fitted + models[[1L]]$resid)
+  tol <- jp_tiny(U, models[[1L]]$fitted + models[[1L]]$resid, x)
   a <- kmin
   b <- kmax
   rows <- list()
@@ -60,7 +62,7 @@ jp_permutation_select <- function(x, S, models, cand, cons, kmin, kmax,
       g <- jp_grid_batch(x, m0$fitted + jp_unwhiten(U, E), S, cand, cons, b,
                          extra)
       jp_ratio(g$sse[, a + 1L], g$sse[, b + 1L], tol)
-    }, n_perm, n_exceed)
+    }, n_perm, n_exceed, batch = if (is.null(n_exceed)) 512L else 32L)
     lev <- alpha / (kmax - a)
     reject <- mc[["p"]] < lev
     rows[[length(rows) + 1L]] <- data.frame(
@@ -94,7 +96,7 @@ jp_mc_pvalue <- function(stat, draw, B, h = NULL, batch = 512L) {
     tried <- tried + nb
     t <- draw(nb)
     t <- t[!is.na(t)]
-    hit <- t >= stat * (1 - 1e-10)
+    hit <- jp_reaches(t, stat)
     if (!is.null(h) && r + sum(hit) >= h) {
       L <- used + which(r + cumsum(hit) >= h)[1L]
       return(c(p = h / L, n = L))
@@ -103,6 +105,14 @@ jp_mc_pvalue <- function(stat, draw, B, h = NULL, batch = 512L) {
     used <- used + length(t)
   }
   c(p = (r + 1) / (used + 1), n = used)
+}
+
+# Simulated statistics that reach the observed one, ties included: the
+# tolerance is relative to the observed statistic and never raises the
+# threshold, whatever the sign of the statistic.
+jp_reaches <- function(t, stat) {
+  thr <- if (is.finite(stat)) stat - 1e-10 * abs(stat) else stat
+  t >= thr
 }
 
 # SSE ratio of a null and an alternative model. SSEs below `tol` are exact
@@ -118,9 +128,18 @@ jp_ratio <- function(sse0, sse1, tol = 0) {
 # fraction of the whitened sum of squares about the (generalized least
 # squares) mean, or the rounding error of the response when that is zero.
 # It does not change when a constant is added to the response.
-jp_tiny <- function(U, y) {
+jp_tiny <- function(U, y, x = NULL) {
+  # The scale of the numerical zero is the variation left after the base
+  # model (intercept and, given `x`, slope) that every candidate contains,
+  # so that a large common trend does not swallow the differences between
+  # candidates.
   yw <- drop(jp_apply_whiten(U, y))
-  dev <- qr.resid(qr(jp_apply_whiten(U, rep(1, length(y)))), yw)
+  B <- if (is.null(x) || !isTRUE(stats::sd(x) > 0)) {
+    matrix(1, length(y), 1L)
+  } else {
+    cbind(1, (x - mean(x)) / stats::sd(x))
+  }
+  dev <- qr.resid(qr(jp_apply_whiten(U, B)), yw)
   max(1e-10 * sum(dev^2), 100 * length(y) * (.Machine$double.eps * max(abs(yw)))^2,
       .Machine$double.xmin)
 }
@@ -130,6 +149,10 @@ jp_tiny <- function(U, y) {
 # residuals, linearly interpolated between the plotting positions i/(n + 1),
 # is applied to uniform random numbers. The support is extended by
 # z_0 = z_(1) - D and z_(n+1) = z_(n) + D with D = ln(3 + ln n) * IQR(z).
+# The draws are centered at the mean of this distribution,
+# (sum(z) + (z_(1) + z_(n)) / 2) / (n + 1): with weights or correlated
+# errors the whitened residuals need not average zero, and an offset would
+# shift the resampled trends once unwhitened.
 jp_eq_residuals <- function(z, B) {
   n <- length(z)
   zs <- sort(z)
@@ -140,7 +163,8 @@ jp_eq_residuals <- function(z, B) {
   up <- (u - i / (n + 1)) * (n + 1)
   lo <- ext[i + 1L]
   hi <- ext[i + 2L]
-  matrix(lo + (hi - lo) * up, n, B)
+  centre <- (sum(zs) + (zs[1L] + zs[n]) / 2) / (n + 1)
+  matrix(lo + (hi - lo) * up, n, B) - centre
 }
 
 # Refits the model for each column of Y given joinpoints per column and
@@ -186,9 +210,24 @@ jp_eq_resample <- function(x, S, model, cand, cons, n_res, extra = NULL) {
 }
 
 # Empirical quantile p value for H0: theta = 0: twice the smaller share of
-# resampled estimates on either side of zero.
-jp_eq_pvalue <- function(theta) {
+# resampled estimates at or beyond zero on either side, at most 1. Estimates
+# within `tol` of zero (roundoff) are ties and count on both sides, so a
+# distribution concentrated at zero gives p = 1.
+jp_eq_pvalue <- function(theta, tol = 0) {
   theta <- theta[is.finite(theta)]
   B <- length(theta)
-  2 * min(sum(theta < 0), sum(theta >= 0)) / B
+  if (!B) {
+    return(NA_real_)
+  }
+  zero <- abs(theta) <= tol
+  min(1, 2 * min(sum(theta < 0 | zero), sum(theta > 0 | zero)) / B)
+}
+
+# Roundoff level of a slope of the model: estimates this small cannot be told
+# from zero.
+jp_slope_tol <- function(model) {
+  y <- model$fitted + model$resid
+  span <- diff(range(model$bounds))
+  if (!is.finite(span) || span <= 0) span <- 1
+  1e3 * .Machine$double.eps * max(abs(y), na.rm = TRUE) / span
 }

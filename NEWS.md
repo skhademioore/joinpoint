@@ -15,7 +15,9 @@
   intervals, deviance based criteria and optional quasi-likelihood dispersion.
 * Continuous joinpoints between observations by an exact search (Hudson 1966).
 * Covariates (`covariates = ~ ...`), excluded data points, shifted x values,
-  jump and comparability ratio models for coding changes (Chen et al. 2020).
+  jump and comparability ratio models for coding changes (Chen et al. 2020),
+  with the uncertainty of the comparability ratio shared by all old coding
+  observations or added to each of them as in the NCI Joinpoint program.
 
 ## Model selection
 
@@ -24,7 +26,8 @@
   ratio test, with optional early stopping (Besag and Clifford 1991) and a
   minimum APC difference worth detecting.
 * A time budget lowers the recommended maximum number of joinpoints when the
-  exhaustive search would be too slow.
+  exhaustive search would be too slow, also across the age group blocks of
+  clustering.
 
 ## Inference
 
@@ -33,14 +36,16 @@
   intervals and p values (Kim et al. 2017).
 * Pairwise tests of parallelism and coincidence with AAPC comparisons and
   multiplicity adjustment (`jp_compare()`; Kim et al. 2004).
-* Clustering of contiguous age groups (`jp_cluster()`) and direct age
-  adjustment with delay factors (`age_adjust()`).
+* Clustering of contiguous age groups (`jp_cluster()`), with final cluster
+  rates standardized by the original or the compressed age groups, and
+  direct age adjustment with delay factors (`age_adjust()`).
 
 ## Output and graphics
 
 * Accessors `apc()`, `aapc()`, `joinpoints()`, `model_selection()`,
   `model_estimates()`, `jump_estimates()`, the publication table `jp_table()`,
-  `coef()`, `vcov()`, `fitted()`, `residuals()`, `predict()` and
+  `coef()` and `vcov()` methods with matching parameters, `fitted()`,
+  `residuals()`, `predict()` (one prediction per row of `newdata`) and
   `as.data.frame()` methods, and `jp_export()` for delimited text files.
 * `ggplot2` graphics: `autoplot()` trend figures with segment labels placed to
   avoid each other, the curves, the points and their error bars;

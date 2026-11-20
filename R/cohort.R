@@ -36,28 +36,60 @@ jp_fit_cohort <- function(d, spec, cohort_index = 1L) {
   cand <- jp_candidates(x, if (spec$continuous) 1L else ctrl$n_grid)
   cons <- jp_constraints(x, cand, ctrl$min_obs_end, ctrl$min_obs_between,
                          closed = spec$continuous)
-  lim <- jp_kmax(spec, ctrl, cons, n)
+  lim <- jp_kmax(spec, ctrl, cons, n, NCOL(extra) * !is.null(extra))
   kmin <- lim$kmin
   kmax <- lim$kmax
   notes <- lim$notes
 
   V <- if (!is.null(spec$vcov)) spec$vcov[d$included, d$included, drop = FALSE]
+  pos <- which(d$included)
+  # Preliminary fit of the largest model under the error structure S0, by
+  # the same (grid or continuous) search as the final fit.
+  prelim <- function(S0) {
+    tau0 <- numeric(0)
+    for (k in rev(seq_len(kmax))) {
+      tau0 <- if (spec$continuous) {
+        jp_continuous_search(x, y, S0, cand, cons, k, extra, NULL,
+                             ctrl$min_obs_end, ctrl$min_obs_between)$tau
+      } else {
+        g0 <- jp_grid_batch(x, y, S0, cand, cons, k, extra)
+        cand[g0$idx[[k + 1L]][1L, ]]
+      }
+      if (length(tau0) == k && !anyNA(tau0)) break
+      tau0 <- numeric(0)
+    }
+    jp_fit_fixed(x, y, S0, tau0, extra)
+  }
   rho <- 0
   if (!identical(spec$autocorrelation, 0)) {
-    if (length(unique(round(diff(x), 8))) > 1L) {
+    if (length(unique(round(diff(d$x), 8))) > 1L) {
       warning("Autocorrelated errors assume equally spaced observations.",
               call. = FALSE)
     }
     rho <- spec$autocorrelation
     if (identical(rho, "estimate")) {
       S0 <- jp_covariance(inc$v, 0, V, inc$r, log)
-      g0 <- jp_grid_batch(x, y, S0, cand, cons, kmax, extra)
-      tau0 <- if (kmax) cand[g0$idx[[kmax + 1L]][1L, ]] else numeric(0)
-      rho <- jp_estimate_rho(jp_fit_fixed(x, y, S0, tau0, extra)$wresid,
-                             jp_tiny(jp_whiten_mat(S0), y))
+      rho <- jp_estimate_rho(prelim(S0)$wresid, jp_tiny(jp_whiten_mat(S0), y, x))
     }
   }
-  S <- jp_covariance(inc$v, rho, V, inc$r, log)
+  S <- jp_covariance(inc$v, rho, V, inc$r, log, pos)
+  # Comparability ratio: every old coding observation is multiplied by the
+  # same estimated ratio, so its uncertainty adds Var(log CR) to every pair
+  # of old coding observations (a rank one term; delta method). With
+  # constant variance the residual variance is first estimated from the
+  # largest model, to put both terms on one scale.
+  if (!is.null(spec$comparability_ratio) && spec$cr_variance > 0 &&
+      identical(spec$cr_covariance, "shared")) {
+    u <- as.numeric(x < jump_at)
+    vl <- spec$cr_variance / spec$comparability_ratio^2
+    S <- if (is.matrix(S)) S else diag(S, length(S))
+    if (all(is.na(inc$v))) {
+      ft0 <- prelim(diag(S))
+      df0 <- n - 2 * (length(ft0$tau) + 1) - NCOL(extra) * !is.null(extra)
+      S <- S * if (df0 > 0) ft0$sse / df0 else 1
+    }
+    S <- S + vl * tcrossprod(u)
+  }
 
   if (glm) {
     gd <- jp_glm_data(inc, spec$family, spec$rate_per)
@@ -76,7 +108,7 @@ jp_fit_cohort <- function(d, spec, cohort_index = 1L) {
       jp_grid_search(x, y, jp_weights(S), cand, cons, kmax, extra,
                      profile = TRUE)
     }
-    models <- lapply(kmin:kmax, function(k) {
+    fit_k <- function(k) {
       if (spec$continuous) {
         cs <- jp_continuous_search(x, y, S, cand, cons, k, extra, NULL,
                                    ctrl$min_obs_end, ctrl$min_obs_between)
@@ -84,6 +116,9 @@ jp_fit_cohort <- function(d, spec, cohort_index = 1L) {
           return(NULL)
         }
       } else {
+        if (!is.finite(g$sse[1L, k + 1L])) {
+          return(NULL)
+        }
         cs <- list(tau = if (k) cand[g$idx[[k + 1L]][1L, ]] else numeric(0),
                    profile = g$profile[[k + 1L]])
       }
@@ -92,10 +127,28 @@ jp_fit_cohort <- function(d, spec, cohort_index = 1L) {
       m$profile <- cs$profile
       m$profile_at <- cs$profile_at
       m
-    })
+    }
+    models <- lapply(kmin:kmax, fit_k)
     names(models) <- kmin:kmax
     models <- Filter(Negate(is.null), models)
+    # Every placement of the requested numbers of joinpoints gives a rank
+    # deficient design (for example a covariate equal to every candidate
+    # hinge): the requested model space cannot be fitted.
+    if (!length(models)) {
+      stop("No identifiable model with ", kmin, " to ", kmax, " joinpoints: ",
+           "every placement gives a rank deficient design (are covariates ",
+           "linearly dependent on the joinpoint terms?). Lower `kmin`.",
+           call. = FALSE)
+    }
     ks <- as.numeric(names(models))
+    if (min(ks) > kmin || max(ks) < kmax) {
+      msg <- sprintf(paste("no admissible fit with more than %d joinpoints;",
+                           "models with %d to %d joinpoints are compared."),
+                     max(ks), min(ks), max(ks))
+      warning("Cohort ", spec$label, ": ", msg, call. = FALSE)
+      notes <- c(notes, msg)
+    }
+    kmin <- min(ks)
     kmax <- max(ks)
   }
 
@@ -157,7 +210,7 @@ jp_fit_cohort <- function(d, spec, cohort_index = 1L) {
   for (i in seq_along(models)) {
     m <- models[[i]]
     eq <- NULL
-    if (m$k %in% eq_for) {
+    if (m$k %in% eq_for && jp_resid_df(m) > 0) {
       eq <- jp_with_seed(eq_seed, jp_eq_resample(x, S, m, cand, cons,
                                                  ctrl$n_resample, extra))
     }
@@ -215,12 +268,15 @@ jp_fitted_at <- function(f, m, xs, Z = NULL) {
 # constraints cannot accommodate is handled by the `infeasible` setting; a
 # recommended `kmax` is lowered when the exhaustive search would exceed the
 # time budget.
-jp_kmax <- function(spec, ctrl, cons, n) {
+jp_kmax <- function(spec, ctrl, cons, n, n_extra = 0) {
   notes <- character(0)
   rec <- jp_recommended_kmax(n)
   cnt <- jp_node_counts(cons, max(rec, spec$kmax))
   nodes <- c(1, 1 + cumsum(cnt$nodes))
-  feasible <- sum(cumprod(cnt$models > 0))
+  # Feasible: admissible placements exist and at least one residual degree
+  # of freedom is left (2k + 2 trend parameters plus extra coefficients).
+  feasible <- min(sum(cumprod(cnt$models > 0)),
+                  max(0, floor((n - 3 - n_extra) / 2)))
   say <- function(msg) {
     warning("Cohort ", spec$label, ": ", msg, call. = FALSE)
     notes <<- c(notes, msg)
@@ -275,11 +331,13 @@ jp_kmax <- function(spec, ctrl, cons, n) {
       kmax <- new
     }
   }
+  # A requested minimum is a requirement: it is not lowered.
   kmin <- spec$kmin
   if (kmin > kmax) {
-    say(sprintf("minimum number of joinpoints lowered from %d to %d.", kmin,
-                kmax))
-    kmin <- kmax
+    stop(sprintf(paste("kmin = %d joinpoints is not feasible: at most %d",
+                       "fit the observations, placement constraints and",
+                       "parameters; lower `kmin`."), kmin, kmax),
+         call. = FALSE)
   }
   list(kmin = kmin, kmax = kmax, notes = notes)
 }
@@ -288,7 +346,15 @@ jp_cohort_seed <- function(seed, g, mode) {
   if (is.null(seed)) {
     return(NULL)
   }
+  # Computed in double precision: seed * g can exceed the integer range.
+  seed <- as.numeric(seed)
   if (identical(mode, "vary")) (seed * g + (g - 1)) %% .Machine$integer.max else seed
+}
+
+# Residual degrees of freedom of a fitted model: observations less the
+# intercept, slopes, joinpoints and extra coefficients.
+jp_resid_df <- function(m) {
+  m$n - 2 * (m$k + 1) - length(m$extra_names)
 }
 
 # Jump value and comparability ratio estimated by the jump model.
@@ -303,7 +369,11 @@ jp_jump_table <- function(m, alpha) {
   cr <- exp(g)
   se_cr <- cr * se
   data.frame(
-    statistic = c("Jump value", "Comparability ratio"),
+    statistic = c("Jump value", if (identical(m$link, "logit")) {
+      "Odds ratio"
+    } else {
+      "Comparability ratio"
+    }),
     estimate = c(g, cr),
     se = c(se, se_cr),
     lower = c(g - tq * se, cr - z * se_cr),

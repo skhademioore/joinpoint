@@ -9,6 +9,10 @@
 #' covariate design, a supplied covariance matrix and every setting of the
 #' run. `saveRDS()` keeps the complete fitted object.
 #'
+#' The files of an earlier export to the same directory with the same
+#' prefix that this export does not write (tables that do not apply to this
+#' fit) are removed, so the directory always holds one consistent set.
+#'
 #' @param object A `joinpoint` or `jp_cluster` object.
 #' @param dir Output directory (created if needed).
 #' @param prefix File name prefix.
@@ -85,6 +89,10 @@ jp_export <- function(object, dir, prefix = "joinpoint",
     Supplied.Covariance = if (!is.null(s$vcov)) as.data.frame(s$vcov),
     Run.Summary = settings
   )
+  stale <- file.path(dir, paste0(prefix, ".",
+                                 names(tables)[vapply(tables, is.null,
+                                                      logical(1))], ".txt"))
+  unlink(stale[file.exists(stale)])
   tables <- tables[!vapply(tables, is.null, logical(1))]
   paths <- file.path(dir, paste0(prefix, ".", names(tables), ".txt"))
   for (i in seq_along(tables)) {

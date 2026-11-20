@@ -56,7 +56,9 @@ not reject.}
 
 \item{perm_seed}{Random number seed for the permutation test (\code{NULL} for
 the current random number stream). The global random number state is
-saved before the seed is set and restored afterwards.}
+saved before the seed is set and restored afterwards (\code{.Random.seed};
+with the Box-Muller normal generator, a normal deviate R keeps outside
+\code{.Random.seed} is not restored).}
 
 \item{n_resample}{Number of resampled data sets for the empirical quantile
 confidence intervals (default 5001).}
@@ -78,7 +80,8 @@ intervals.}
 \item{aapc_full}{Compute the AAPC over the full range of the data.}
 
 \item{aapc_last}{Integer vector (up to two values) of "Last X observations"
-AAPC ranges.}
+AAPC ranges: the range from the X-th last observation of the cohort,
+excluded observations counted, to the last included one.}
 
 \item{aapc_ranges}{List of up to seven numeric \code{c(start, end)} ranges
 anywhere within the data range.}
@@ -89,9 +92,12 @@ anywhere within the data range.}
 \item{dds_cutoffs}{Cutoffs \code{c < d} of the data dependent selection.}
 
 \item{infeasible}{What to do when a cohort has too few observations for
-the requested \code{kmax} under the placement constraints: \code{"reduce"} lowers \code{kmax} to the largest feasible
-value, \code{"recommended"} uses the recommended maximum for the cohort, and
-\code{"skip"} leaves the cohort out. A warning is given in every case.}
+the requested \code{kmax} under the placement constraints: \code{"reduce"} lowers
+\code{kmax} to the largest feasible value, \code{"recommended"} uses the
+recommended maximum for the cohort, and \code{"skip"} leaves the cohort out.
+A warning is given in every case. A \code{kmin} above the feasible maximum
+is never lowered: the cohort is left out with a warning (the call fails
+if no cohort remains).}
 
 \item{tau_interval}{Parametric interval of joinpoint locations:
 \code{"lerman"} (Lerman 1980) or the more conservative \code{"literal"} variant

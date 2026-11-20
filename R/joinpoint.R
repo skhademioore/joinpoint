@@ -22,7 +22,9 @@
 #'   not reject.
 #' @param perm_seed Random number seed for the permutation test (`NULL` for
 #'   the current random number stream). The global random number state is
-#'   saved before the seed is set and restored afterwards.
+#'   saved before the seed is set and restored afterwards (`.Random.seed`;
+#'   with the Box-Muller normal generator, a normal deviate R keeps outside
+#'   `.Random.seed` is not restored).
 #' @param n_resample Number of resampled data sets for the empirical quantile
 #'   confidence intervals (default 5001).
 #' @param eq_seed Random number seed for the empirical quantile method
@@ -37,16 +39,20 @@
 #'   intervals.
 #' @param aapc_full Compute the AAPC over the full range of the data.
 #' @param aapc_last Integer vector (up to two values) of "Last X observations"
-#'   AAPC ranges.
+#'   AAPC ranges: the range from the X-th last observation of the cohort,
+#'   excluded observations counted, to the last included one.
 #' @param aapc_ranges List of up to seven numeric `c(start, end)` ranges
 #'   anywhere within the data range.
 #' @param madwd Minimum APC difference worth detecting, in percentage points
 #'   (`NULL` to disable).
 #' @param dds_cutoffs Cutoffs `c < d` of the data dependent selection.
 #' @param infeasible What to do when a cohort has too few observations for
-#'   the requested `kmax` under the placement constraints: `"reduce"` lowers `kmax` to the largest feasible
-#'   value, `"recommended"` uses the recommended maximum for the cohort, and
-#'   `"skip"` leaves the cohort out. A warning is given in every case.
+#'   the requested `kmax` under the placement constraints: `"reduce"` lowers
+#'   `kmax` to the largest feasible value, `"recommended"` uses the
+#'   recommended maximum for the cohort, and `"skip"` leaves the cohort out.
+#'   A warning is given in every case. A `kmin` above the feasible maximum
+#'   is never lowered: the cohort is left out with a warning (the call fails
+#'   if no cohort remains).
 #' @param tau_interval Parametric interval of joinpoint locations:
 #'   `"lerman"` (Lerman 1980) or the more conservative `"literal"` variant
 #'   `Q (1 + k / (n - p)) F`, which reproduces some published intervals.
@@ -139,7 +145,9 @@ jp_control <- function(min_obs_end = 2, min_obs_between = 2, n_grid = 0,
 #'   May be omitted when `count` and `population` are given.
 #' @param by Optional character vector of by-variables defining cohorts.
 #' @param se Optional column of standard errors of `y` (on the original
-#'   scale).
+#'   scale). As in weighted least squares, they give the relative variances
+#'   of the observations (the weights); the residual variance scale is
+#'   estimated from the data.
 #' @param count,population Optional columns of counts and populations (or
 #'   numerators and denominators) used to calculate crude rates, proportions
 #'   or percents and their standard errors.
@@ -159,16 +167,22 @@ jp_control <- function(min_obs_end = 2, min_obs_between = 2, n_grid = 0,
 #'   (standard errors provided or calculated) or `"poisson"`. Defaults to
 #'   `"se"` when standard errors are available and `"constant"` otherwise.
 #' @param autocorrelation First order autocorrelation of the errors: a number
-#'   in (-1, 1), or `"estimate"` to estimate it from the data.
-#' @param vcov Optional variance-covariance matrix of the responses (single
-#'   cohort only).
+#'   in (-1, 1), or `"estimate"` to estimate it from the data. Lags count the
+#'   observations of the cohort in time order, excluded ones included, so the
+#'   observations are assumed equally spaced.
+#' @param vcov Optional variance-covariance matrix of the responses, with one
+#'   row and column per row of `data` (single cohort only). Like `se`, it
+#'   gives the relative covariance of the errors; the residual variance
+#'   scale is estimated from the data. It cannot be combined with
+#'   `autocorrelation`.
 #' @param kmin,kmax Minimum and maximum number of joinpoints. `kmax = NULL`
 #'   uses the recommended maximum for the number of observations.
 #' @param method Model selection method: `"wbic"` (weighted BIC, default),
 #'   `"bic"`, `"bic3"`, `"mbic"` (modified BIC), `"dds"` (data dependent
 #'   selection) or `"permutation"` for least squares fits; `"wbic"`,
 #'   `"bic"`, `"bic3"` or `"lrt"` (sequential Monte Carlo likelihood ratio
-#'   test) for Poisson and binomial fits.
+#'   test) for Poisson and binomial fits. The modified BIC follows the NCI
+#'   Joinpoint definition, which depends on the units of `y` and `x`.
 #' @param ci_method Confidence interval method for APCs, AAPCs and joinpoint
 #'   locations: `"empirical"` (empirical quantile, the default for least
 #'   squares fits with grid joinpoints) or `"parametric"` (the only method for
@@ -176,6 +190,11 @@ jp_control <- function(min_obs_end = 2, min_obs_between = 2, n_grid = 0,
 #'   intervals condition on the estimated joinpoints, except the interval of
 #'   a joinpoint location; for Poisson and binomial fits they are Wald
 #'   intervals and the joinpoint interval is based on the profile deviance.
+#'   Ignoring the uncertainty of estimated joinpoints, parametric intervals
+#'   of segment trends can cover less often than their nominal level,
+#'   especially for small slope changes. Empirical quantile intervals
+#'   re-estimate the joinpoints in every resample. All intervals condition
+#'   on the selected number of joinpoints.
 #' @param covariates Optional one-sided formula of covariates adjusted for in
 #'   every segment, for example `~ factor(month)` for seasonality. The
 #'   covariates are centered, so the fitted trend refers to their average.
@@ -197,13 +216,24 @@ jp_control <- function(min_obs_end = 2, min_obs_between = 2, n_grid = 0,
 #'   at least 1. It scales the Wald covariances and the deviances in the
 #'   criteria and is reported by [model_selection()].
 #' @param exclude Values of `x` to exclude from model fitting. Excluded
-#'   points are kept in the data and graphs.
+#'   points are kept in the data and graphs; their responses are not checked
+#'   or transformed, so an excluded zero does not prevent a log-linear fit.
 #' @param shift Constant added to `x` before fitting.
 #' @param jump For coding changes: the last value of `x` under the old
 #'   coding. Fits the jump model, or the comparability ratio model when
 #'   `comparability_ratio` is given.
 #' @param comparability_ratio,cr_variance Comparability ratio (new coding
 #'   over old coding) and its variance for the comparability ratio model.
+#'   Every observation before the change is multiplied by the ratio.
+#' @param cr_covariance How the uncertainty of the comparability ratio
+#'   enters the error covariance. `"shared"` (default): the one estimated
+#'   ratio multiplies every old coding observation, so by the delta method
+#'   it adds `cr_variance / comparability_ratio^2` to the covariance of every
+#'   pair of them on the log scale (with constant variance, after the
+#'   residual variance is estimated from the largest model). `"nci"`: as the
+#'   NCI Joinpoint program, the variance of each adjusted old coding rate
+#'   becomes `CR^2 Var(r) + r^2 cr_variance`, independently for each
+#'   observation, and `cr_variance` is not used with constant variance.
 #' @param interval Interval label of `x` used in output, e.g. `"Annual"` or
 #'   `"Monthly"`.
 #' @param control Settings from [jp_control()].
@@ -251,6 +281,7 @@ joinpoint <- function(data, x, y = NULL, by = NULL, se = NULL, count = NULL,
                       continuous = FALSE, overdispersion = FALSE,
                       exclude = NULL, shift = 0, jump = NULL,
                       comparability_ratio = NULL, cr_variance = 0,
+                      cr_covariance = c("shared", "nci"),
                       interval = "Annual", control = jp_control()) {
   cl <- match.call()
   if (!is.data.frame(data)) stop("`data` must be a data frame.", call. = FALSE)
@@ -260,9 +291,16 @@ joinpoint <- function(data, x, y = NULL, by = NULL, se = NULL, count = NULL,
   cn <- jp_col(substitute(count), data, "count")
   pn <- jp_col(substitute(population), data, "population")
   byn <- if (is.null(by)) NULL else jp_col(by, data, "by")
+  # Cohort keys become columns of every result table, beside the results.
+  clash <- intersect(byn, jp_reserved_names)
+  if (length(clash)) {
+    stop("By-variables cannot be named like columns of the result tables; ",
+         "rename ", toString(clash), ".", call. = FALSE)
+  }
   type <- match.arg(type)
   family <- match.arg(family)
   method <- match.arg(method)
+  cr_covariance <- match.arg(cr_covariance)
   glm <- family != "gaussian"
   ci_method <- match.arg(ci_method %||%
                            if (glm || continuous) "parametric" else "empirical",
@@ -305,12 +343,22 @@ joinpoint <- function(data, x, y = NULL, by = NULL, se = NULL, count = NULL,
                     (type %in% c("crude_rate", "proportion", "percent") &&
                      is.null(yn) && !is.null(cn))) "se" else "constant"
   }
-  variance <- match.arg(variance, c("constant", "se", "poisson", "glm"))
+  variance <- match.arg(variance, if (glm) "glm" else
+                          c("constant", "se", "poisson"))
   if (!(identical(autocorrelation, "estimate") ||
         (is.numeric(autocorrelation) && length(autocorrelation) == 1L &&
          isTRUE(abs(autocorrelation) < 1)))) {
     stop("`autocorrelation` must be \"estimate\" or a number in (-1, 1).",
          call. = FALSE)
+  }
+  if (!is.null(vcov) &&
+      (identical(autocorrelation, "estimate") || autocorrelation != 0)) {
+    stop("`vcov` already gives the correlation of the errors; leave ",
+         "`autocorrelation` at 0.", call. = FALSE)
+  }
+  if (!is.null(vcov) && (!is.matrix(vcov) || any(dim(vcov) != nrow(data)))) {
+    stop("`vcov` must be a square matrix with one row and column per row ",
+         "of `data`.", call. = FALSE)
   }
   if ((identical(autocorrelation, "estimate") || autocorrelation != 0) &&
       variance == "poisson") {
@@ -381,7 +429,7 @@ joinpoint <- function(data, x, y = NULL, by = NULL, se = NULL, count = NULL,
   groups <- if (is.null(byn)) {
     list(seq_len(nrow(data)))
   } else {
-    split(seq_len(nrow(data)), data[byn], drop = TRUE, lex.order = TRUE)
+    unname(jp_split_keys(data[byn]))
   }
   if (!is.null(vcov) && length(groups) > 1L) {
     stop("A variance-covariance matrix can only be used with one cohort.",
@@ -402,6 +450,7 @@ joinpoint <- function(data, x, y = NULL, by = NULL, se = NULL, count = NULL,
     autocorrelation = autocorrelation, vcov = vcov, kmin = kmin,
     kmax = kmax, method = method, ci_method = ci_method, exclude = exclude,
     shift = shift, jump = jump, comparability_ratio = comparability_ratio,
+    cr_covariance = cr_covariance,
     cr_variance = cr_variance, interval = interval, control = control
   )
   get <- function(nm, i) if (is.null(nm)) NULL else data[[nm]][i]
@@ -443,11 +492,12 @@ joinpoint <- function(data, x, y = NULL, by = NULL, se = NULL, count = NULL,
           contrasts = attr(Z0, "contrasts"), center = ctr
         )
       }
-      if (!is.null(vcov)) spec$vcov <- vcov[d$row, d$row]
+      if (!is.null(vcov)) spec$vcov <- vcov[i[d$row], i[d$row], drop = FALSE]
       if (!is.null(jump)) {
         spec$jump <- jump + shift
         if (!is.null(comparability_ratio)) {
-          d <- jp_apply_cr(d, spec$jump, comparability_ratio, cr_variance,
+          d <- jp_apply_cr(d, spec$jump, comparability_ratio,
+                           if (cr_covariance == "nci") cr_variance else 0,
                            variance, log)
         }
       }
@@ -470,17 +520,42 @@ joinpoint <- function(data, x, y = NULL, by = NULL, se = NULL, count = NULL,
 }
 
 # Comparability ratio model: observations before the coding change are
-# multiplied by the ratio and their variances updated by the delta method.
+# multiplied by the ratio. The model scale variances of the rates do not
+# change (the model is log-linear); the uncertainty of the ratio, shared by
+# all old coding observations, is added to their covariance when the cohort
+# is fitted.
+# Applies the comparability ratio to the old coding rates; `cr_var` is the
+# variance added to each of them separately (cr_covariance = "nci").
 jp_apply_cr <- function(d, last_old, cr, cr_var, variance, log) {
   pre <- d$x <= last_old
   r_adj <- d$r
   r_adj[pre] <- cr * d$r[pre]
-  if (variance != "constant") {
+  if (variance != "constant" && cr_var > 0) {
     v_orig <- if (log) d$v * d$r^2 else d$v
     v_adj <- v_orig
     v_adj[pre] <- cr^2 * v_orig[pre] + d$r[pre]^2 * cr_var
     d$v <- if (log) v_adj / r_adj^2 else v_adj
   }
-  d$y <- if (log) base::log(r_adj) else r_adj
+  d$y <- if (log) {
+    suppressWarnings(ifelse(!is.na(r_adj) & r_adj > 0, base::log(r_adj),
+                            NA_real_))
+  } else {
+    r_adj
+  }
   d
 }
+
+# Column names of the result tables, which by-variables must not take.
+jp_reserved_names <- c(
+  "model", "final", "ci_method", "segment", "start", "end", "estimate",
+  "lower", "upper", "statistic", "p_value", "significant", "range",
+  "within_segment", "se_log", "log_estimate", "joinpoint", "parameter", "se",
+  "df", "x", "fit", "joinpoints", "deviance", "dispersion", "sse", "bic",
+  "bic3", "mbic", "weight", "wbic", "mse", "r_squared", "durbin_watson",
+  "selected", "statistical", "method", "kmin", "kmax", "rho", "observed",
+  "count", "population", "modeled", "included", "zero_count", "apc",
+  "test_statistic", "reason", "null", "alternative", "alpha", "reject",
+  "simulations", "group1", "group2", "test", "k_null", "k_group1",
+  "k_group2", "df1", "df2", "result", "p_unadjusted", "aapc1", "aapc2",
+  "difference", "Trend", "Period", "Joinpoints", "Final", "p"
+)

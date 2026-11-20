@@ -23,7 +23,9 @@ A data frame of character columns.
 Formats the APCs of the segments (slopes for linear models) and the
 AAPCs (AACs) of the final, or a given, model as a character table with
 estimates, confidence intervals and p values, ready for
-\code{knitr::kable()} or other table packages.
+\code{knitr::kable()} or other table packages. With \code{model = "all"}, the
+columns \code{Model} (number of joinpoints) and \code{Final} identify the model of
+each row.
 }
 \examples{
 tb <- subset(us_mortality, cause == "Tuberculosis")

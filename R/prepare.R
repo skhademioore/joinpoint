@@ -32,7 +32,31 @@ jp_prepare <- function(x, r, se, count, population, type, variance, log,
                        rate_per, exclude, shift) {
   n <- length(x)
   corrected <- rep(FALSE, n)
-  if (type %in% c("crude_rate", "proportion", "percent") && is.null(r)) {
+  if (anyNA(x) || !all(is.finite(x))) {
+    stop("Missing or infinite values in the independent variable.",
+         call. = FALSE)
+  }
+  # Exclusions are known from x alone; the checks of the response and its
+  # transformation apply to the included observations only.
+  included <- !(x %in% exclude)
+  if (sum(included) < 2) {
+    stop("At least two observations must remain after exclusions.",
+         call. = FALSE)
+  }
+  if (variance == "poisson" && !is.null(se)) {
+    stop("Poisson variance is calculated from the counts; do not supply ",
+         "`se` with `variance = \"poisson\"`.", call. = FALSE)
+  }
+  if (type == "crude_rate" && !is.null(r) && variance == "poisson" &&
+      !is.null(count)) {
+    # A supplied crude rate with its counts: the Poisson standard error has
+    # the relative size 1 / sqrt(count) whatever the rate multiplier.
+    if (any(count < 0, na.rm = TRUE)) {
+      stop("`count` must be nonnegative.", call. = FALSE)
+    }
+    se <- r / sqrt(pmax(count, 0.5))
+  } else if (type %in% c("crude_rate", "proportion", "percent") &&
+             is.null(r)) {
     if (is.null(count) || is.null(population)) {
       stop("`count` and `population` are required to calculate a ", type,
            ".", call. = FALSE)
@@ -87,25 +111,24 @@ jp_prepare <- function(x, r, se, count, population, type, variance, log,
            "calculated from `count` and `population`.", call. = FALSE)
     }
   }
+  ri <- r[included]
   if (variance == "se") {
     if (is.null(se)) {
       stop("`variance = \"se\"` requires standard errors (`se`).",
            call. = FALSE)
     }
-    if (any(!is.finite(se) | se <= 0)) {
+    if (any(!is.finite(se[included]) | se[included] <= 0)) {
       stop("Standard errors must be positive and finite.", call. = FALSE)
     }
   }
-  if (anyNA(x) || anyNA(r)) {
-    stop("Missing values in the independent or dependent variable.",
-         call. = FALSE)
+  if (anyNA(ri)) {
+    stop("Missing values in the dependent variable.", call. = FALSE)
   }
-  if (!all(is.finite(x)) || !all(is.finite(r))) {
-    stop("Infinite values in the independent or dependent variable.",
-         call. = FALSE)
+  if (!all(is.finite(ri))) {
+    stop("Infinite values in the dependent variable.", call. = FALSE)
   }
   upper <- switch(type, proportion = 1, percent = 100, Inf)
-  if (type != "other" && any(r < 0 | r > upper)) {
+  if (type != "other" && any(ri < 0 | ri > upper)) {
     stop("Values of a ", type, " must lie in [0, ", upper, "].",
          call. = FALSE)
   }
@@ -114,21 +137,23 @@ jp_prepare <- function(x, r, se, count, population, type, variance, log,
          call. = FALSE)
   }
   glm <- variance == "glm"
-  if (log && !glm && any(r <= 0)) {
+  if (log && !glm && any(ri <= 0)) {
     stop("The log transformation requires a positive response.",
          call. = FALSE)
   }
-  y <- if (log && !glm) base::log(r) else r
+  # Excluded observations that cannot be transformed get a missing model
+  # scale value; they are only shown.
+  y <- if (log && !glm) {
+    suppressWarnings(ifelse(!is.na(r) & r > 0, base::log(r), NA_real_))
+  } else {
+    r
+  }
   v <- if (variance %in% c("se", "poisson")) {
     if (log) (se / r)^2 else se^2
   } else {
     rep(NA_real_, n)
   }
-  included <- !(x %in% exclude)
-  if (sum(included) < 2) {
-    stop("At least two observations must remain after exclusions.",
-         call. = FALSE)
-  }
+  v[!included] <- ifelse(is.finite(v[!included]), v[!included], NA_real_)
   o <- order(x)
   data.frame(
     x = (x + shift)[o], r = r[o], se = if (is.null(se)) NA_real_ else se[o],

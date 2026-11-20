@@ -23,6 +23,12 @@ R squared and the Durbin-Watson statistic (undefined for constant series
 and exact fits), the permutation or likelihood ratio tests performed, the
 data dependent selection details and the MADWD steps.
 }
+\details{
+The penalties of BIC, BIC3 and WBIC count the parameters of the trend:
+intercept, slopes and joinpoints. Jump and covariate coefficients, common
+to all models of a fit, are not counted, so the criteria compare numbers
+of joinpoints within a fit but not fits with different adjustments.
+}
 \examples{
 tb <- subset(us_mortality, cause == "Tuberculosis")
 fit <- joinpoint(tb, year, rate, kmax = 2, ci_method = "parametric")
