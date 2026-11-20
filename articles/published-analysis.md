@@ -18,10 +18,11 @@ with 0, 1 and 2 joinpoints.
 
 The article is open access (CC BY 4.0) and its appendix tabulates the
 yearly data, which ship with the package as `ontario_bmi`. This vignette
-reproduces the published analysis in R, draws a publication figure in
-place of Figure 3, and extends the analysis to the BMI categories.
-Figure 4 of the article, mean BMI by age group, ethnicity and parity,
-cannot be reproduced because those yearly series are not published.
+reproduces the published analysis in R, draws the trend of Figure 3 with
+error bars and slope labels, and extends the analysis to the BMI
+categories. Figure 4 of the article, mean BMI by age group, ethnicity
+and parity, cannot be reproduced because those yearly series are not
+published.
 
 ## The data
 
@@ -94,13 +95,13 @@ joinpoints(fit)
 #> 1     1  TRUE parametric         1     2016  2014  2017
 ```
 
-The interval of the joinpoint location contains the candidate years
-whose best fit with the joinpoint there has a residual sum of squares
-within `Q (1 + k F / (n - p))` of the minimum `Q` (Lerman 1980), with
-`F` the 95% quantile of the F distribution on `k` and `n - p` degrees of
-freedom. The published interval is wider. It matches the variant
-`Q (1 + k / (n - p)) F`, which multiplies the whole bracket by `F` and
-does not narrow as the series gets longer:
+The package offers two parametric intervals for the joinpoint location.
+The default contains the candidate years whose best fit with the
+joinpoint there has a residual sum of squares within
+`Q (1 + k F / (n - p))` of the minimum `Q` (Lerman 1980), with `F` the
+95% quantile of the F distribution on `k` and `n - p` degrees of
+freedom. The conservative variant, `Q (1 + k / (n - p)) F`, multiplies
+the whole bracket by `F` and gives a wider interval:
 
 ``` r
 
@@ -125,26 +126,11 @@ above:
 | Slope 95% CIs | (-0.035, 0.067), (0.088, 0.162) | (-0.040, 0.073), (0.085, 0.165) |
 | Joinpoint 95% CI | 2014-2019 | 2014-2017; variant 2014-2019 |
 
-The selection, the joinpoint, the slopes, their p values and the slope
-change agree with Table 4. Two quantities do not:
+## A figure with error bars and slope labels
 
-- The published slope limits lie inside the package’s by about 0.005.
-  They correspond to t quantiles on 7 to 8 degrees of freedom, while the
-  published p values, like the package’s slope intervals and tests, use
-  the 5 degrees of freedom of the separate segment regressions. The
-  degrees of freedom of the published intervals are an inference; the
-  article does not report them.
-- The published joinpoint interval is reproduced by the conservative
-  variant only.
-
-Because the appendix rounds the yearly means to one decimal, the
-remaining digits cannot be checked further.
-
-## A better figure
-
-The published Figure 3 shows the yearly means and the fitted segments.
-The same information, with the uncertainty of each yearly mean and the
-slope intervals written on the segments, makes a cleaner figure:
+The yearly means and the fitted segments of Figure 3, with the 95%
+confidence interval of each yearly mean as an error bar and the slope of
+each segment and its interval written next to the segment:
 
 ``` r
 

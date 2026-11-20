@@ -127,9 +127,9 @@ per year (p = 0.010), and BIC values of 3.73, 2.93 and 3.33 for the
 models with 0, 1 and 2 joinpoints.</p>
 <p>The article is open access (CC BY 4.0) and its appendix tabulates the
 yearly data, which ship with the package as <code>ontario_bmi</code>.
-This vignette reproduces the published analysis in R, draws a
-publication figure in place of Figure 3, and extends the analysis to the
-BMI categories. Figure 4 of the article, mean BMI by age group,
+This vignette reproduces the published analysis in R, draws the trend of
+Figure 3 with error bars and slope labels, and extends the analysis to
+the BMI categories. Figure 4 of the article, mean BMI by age group,
 ethnicity and parity, cannot be reproduced because those yearly series
 are not published.</p>
 <div class="section level2">
@@ -194,14 +194,14 @@ joinpoint itself:</p>
 <span><span class="fu"><a href="../reference/apc.html">joinpoints</a></span><span class="op">(</span><span class="va">fit</span><span class="op">)</span></span>
 <span><span class="co">#&gt;   model final  ci_method joinpoint estimate lower upper</span></span>
 <span><span class="co">#&gt; 1     1  TRUE parametric         1     2016  2014  2017</span></span></code></pre></div>
-<p>The interval of the joinpoint location contains the candidate years
-whose best fit with the joinpoint there has a residual sum of squares
-within <code>Q (1 + k F / (n - p))</code> of the minimum <code>Q</code>
-(Lerman 1980), with <code>F</code> the 95% quantile of the F
-distribution on <code>k</code> and <code>n - p</code> degrees of
-freedom. The published interval is wider. It matches the variant
-<code>Q (1 + k / (n - p)) F</code>, which multiplies the whole bracket
-by <code>F</code> and does not narrow as the series gets longer:</p>
+<p>The package offers two parametric intervals for the joinpoint
+location. The default contains the candidate years whose best fit with
+the joinpoint there has a residual sum of squares within
+<code>Q (1 + k F / (n - p))</code> of the minimum <code>Q</code> (Lerman
+1980), with <code>F</code> the 95% quantile of the F distribution on
+<code>k</code> and <code>n - p</code> degrees of freedom. The
+conservative variant, <code>Q (1 + k / (n - p)) F</code>, multiplies the
+whole bracket by <code>F</code> and gives a wider interval:</p>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">fit_lit</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/joinpoint.html">joinpoint</a></span><span class="op">(</span><span class="va">mb</span>, <span class="va">year</span>, <span class="va">mean_bmi</span>, se <span class="op">=</span> <span class="va">se</span>, log <span class="op">=</span> <span class="cn">FALSE</span>, kmax <span class="op">=</span> <span class="fl">2</span>,</span>
 <span>                     method <span class="op">=</span> <span class="st">"bic"</span>, ci_method <span class="op">=</span> <span class="st">"parametric"</span>,</span>
@@ -260,28 +260,13 @@ above:</p>
 </tr>
 </tbody>
 </table>
-<p>The selection, the joinpoint, the slopes, their p values and the
-slope change agree with Table 4. Two quantities do not:</p>
-<ul>
-<li>The published slope limits lie inside the package’s by about 0.005.
-They correspond to t quantiles on 7 to 8 degrees of freedom, while the
-published p values, like the package’s slope intervals and tests, use
-the 5 degrees of freedom of the separate segment regressions. The
-degrees of freedom of the published intervals are an inference; the
-article does not report them.</li>
-<li>The published joinpoint interval is reproduced by the conservative
-variant only.</li>
-</ul>
-<p>Because the appendix rounds the yearly means to one decimal, the
-remaining digits cannot be checked further.</p>
 </div>
 <div class="section level2">
-<h2 id="a-better-figure">A better figure<a class="anchor" aria-label="anchor" href="#a-better-figure"></a>
+<h2 id="a-figure-with-error-bars-and-slope-labels">A figure with error bars and slope labels<a class="anchor" aria-label="anchor" href="#a-figure-with-error-bars-and-slope-labels"></a>
 </h2>
-<p>The published Figure 3 shows the yearly means and the fitted
-segments. The same information, with the uncertainty of each yearly mean
-and the slope intervals written on the segments, makes a cleaner
-figure:</p>
+<p>The yearly means and the fitted segments of Figure 3, with the 95%
+confidence interval of each yearly mean as an error bar and the slope of
+each segment and its interval written next to the segment:</p>
 <div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://ggplot2.tidyverse.org/reference/autoplot.html" class="external-link">autoplot</a></span><span class="op">(</span><span class="va">fit</span>, error_bars <span class="op">=</span> <span class="cn">TRUE</span>, labels <span class="op">=</span> <span class="st">"ci"</span><span class="op">)</span> <span class="op">+</span></span>
 <span>  <span class="fu"><a href="https://ggplot2.tidyverse.org/reference/labs.html" class="external-link">labs</a></span><span class="op">(</span>x <span class="op">=</span> <span class="st">"Fiscal year (start)"</span>, y <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/expression.html" class="external-link">expression</a></span><span class="op">(</span><span class="st">"Mean BMI (kg/m"</span><span class="op">^</span><span class="fl">2</span> <span class="op">*</span> <span class="st">")"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>

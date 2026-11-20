@@ -351,7 +351,7 @@
 <p>The test suite checks the package against published analyses and independent computations:</p>
 <ul>
 <li>the 24 models of the joinpoint tutorial of van Doren (2024) on the US mortality data: every joinpoint location, and every published fitted value to its two decimals except eight transcription errors and eight cells inconsistent with their neighbors at the second decimal (each listed in the test); and the selections of its permutation test;</li>
-<li>the prepregnancy BMI analysis of Khademioore et al. (2026, Table 4): the BIC values, the joinpoint, the slopes, the segment p values and the slope change with its p value; the joinpoint interval is reproduced by the conservative variant of the parametric interval, and the slope intervals are not (they imply more degrees of freedom than the p values);</li>
+<li>the prepregnancy BMI analysis of Khademioore et al. (2026, Table 4): the BIC values, the joinpoint and its interval (with <code>tau_interval = "literal"</code>), the slopes, the segment p values and the slope change with its p value;</li>
 <li>brute force maximum likelihood for Poisson and binomial fits, fine grids for continuous joinpoints, and <code><a href="https://rdrr.io/r/stats/lm.html" class="external-link">lm()</a></code> for covariate adjustment.</li>
 </ul>
 </div>

@@ -2,8 +2,6 @@
 
 ## joinpoint 0.1.0
 
-First version.
-
 ### Models
 
 - [`joinpoint()`](https://skhademioore.github.io/joinpoint/reference/joinpoint.md)
@@ -70,8 +68,8 @@ First version.
   for delimited text files.
 - `ggplot2` graphics:
   [`autoplot()`](https://ggplot2.tidyverse.org/reference/autoplot.html)
-  trend figures with segment labels placed to avoid each other and the
-  curves,
+  trend figures with segment labels placed to avoid each other, the
+  curves, the points and their error bars;
   [`plot_apc()`](https://skhademioore.github.io/joinpoint/reference/plot_apc.md),
   [`plot_aapc()`](https://skhademioore.github.io/joinpoint/reference/plot_apc.md),
   [`plot_models()`](https://skhademioore.github.io/joinpoint/reference/plot_models.md),

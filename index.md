@@ -121,11 +121,9 @@ independent computations:
   cells inconsistent with their neighbors at the second decimal (each
   listed in the test); and the selections of its permutation test;
 - the prepregnancy BMI analysis of Khademioore et al. (2026, Table 4):
-  the BIC values, the joinpoint, the slopes, the segment p values and
-  the slope change with its p value; the joinpoint interval is
-  reproduced by the conservative variant of the parametric interval, and
-  the slope intervals are not (they imply more degrees of freedom than
-  the p values);
+  the BIC values, the joinpoint and its interval (with
+  `tau_interval = "literal"`), the slopes, the segment p values and the
+  slope change with its p value;
 - brute force maximum likelihood for Poisson and binomial fits, fine
   grids for continuous joinpoints, and
   [`lm()`](https://rdrr.io/r/stats/lm.html) for covariate adjustment.
