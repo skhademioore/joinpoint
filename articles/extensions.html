@@ -350,10 +350,10 @@ both of its observations on its joinpoints, and BIC prefers it:</p>
 <code class="sourceCode R"><span><span class="va">fit_two</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/joinpoint.html">joinpoint</a></span><span class="op">(</span><span class="va">mb</span>, <span class="va">year</span>, <span class="va">mean_bmi</span>, se <span class="op">=</span> <span class="va">se</span>, log <span class="op">=</span> <span class="cn">FALSE</span>, kmax <span class="op">=</span> <span class="fl">2</span>,</span>
 <span>                     method <span class="op">=</span> <span class="st">"bic"</span>, continuous <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
 <span><span class="fu"><a href="../reference/apc.html">apc</a></span><span class="op">(</span><span class="va">fit_two</span><span class="op">)</span><span class="op">[</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"start"</span>, <span class="st">"end"</span>, <span class="st">"estimate"</span><span class="op">)</span><span class="op">]</span></span>
-<span><span class="co">#&gt;   start  end      estimate</span></span>
-<span><span class="co">#&gt; 1  2012 2016 -2.124882e-15</span></span>
-<span><span class="co">#&gt; 2  2016 2017  2.412915e-01</span></span>
-<span><span class="co">#&gt; 3  2017 2021  9.921583e-02</span></span></code></pre></div>
+<span><span class="co">#&gt;   start  end   estimate</span></span>
+<span><span class="co">#&gt; 1  2012 2016 0.00000000</span></span>
+<span><span class="co">#&gt; 2  2016 2017 0.24129154</span></span>
+<span><span class="co">#&gt; 3  2017 2021 0.09921583</span></span></code></pre></div>
 <p>Such a segment describes two yearly values, not a trend. Requiring
 three observations between joinpoints rules it out and restores the one
 joinpoint model:</p>

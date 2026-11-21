@@ -68,9 +68,9 @@ The result tables are ordinary data frames:
 
 apc(fit_tb)[, c("start", "end", "estimate", "lower", "upper", "p_value")]
 #>   start  end   estimate      lower      upper    p_value
-#> 1  1900 1947  -3.719816  -3.915550  -3.504438 0.00000000
+#> 1  1900 1947  -3.719816  -3.915550  -3.504438 0.00019996
 #> 2  1947 1954 -14.659682 -22.649226 -11.774320 0.00119976
-#> 3  1954 1981  -8.967482  -9.466654  -8.409576 0.00000000
+#> 3  1954 1981  -8.967482  -9.466654  -8.409576 0.00019996
 #> 4  1981 1998  -4.520365  -5.374758  -3.362493 0.00079984
 joinpoints(fit_tb)
 #>   model final ci_method joinpoint estimate lower upper

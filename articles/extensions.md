@@ -233,10 +233,10 @@ both of its observations on its joinpoints, and BIC prefers it:
 fit_two <- joinpoint(mb, year, mean_bmi, se = se, log = FALSE, kmax = 2,
                      method = "bic", continuous = TRUE)
 apc(fit_two)[, c("start", "end", "estimate")]
-#>   start  end      estimate
-#> 1  2012 2016 -2.124882e-15
-#> 2  2016 2017  2.412915e-01
-#> 3  2017 2021  9.921583e-02
+#>   start  end   estimate
+#> 1  2012 2016 0.00000000
+#> 2  2016 2017 0.24129154
+#> 3  2017 2021 0.09921583
 ```
 
 Such a segment describes two yearly values, not a trend. Requiring three

@@ -44,7 +44,11 @@ jp_save(
   Decimals of the numeric columns of a table (character columns, such as
   those of
   [`jp_table()`](https://skhademioore.github.io/joinpoint/reference/jp_table.md),
-  are written as they are).
+  are written as they are). In `.csv`, `.tsv` and `.txt` files numbers
+  stay numeric (p values rounded to `digits` significant digits); other
+  formats show p values with three decimals, and below 0.001 as "\<
+  0.001". Line breaks inside cells of Markdown and document tables
+  become spaces.
 
 - width, height, dpi:
 
@@ -88,7 +92,8 @@ The path of the written file, invisibly.
 
 - Interactive graphics
   ([`jp_interactive()`](https://skhademioore.github.io/joinpoint/reference/jp_interactive.md)):
-  `.html`, a standalone web page.
+  `.html`, a standalone web page (without Pandoc, a page with its
+  scripts in the folder `<name>_files` beside it).
 
 - A `joinpoint` fit: a complete report, see
   [`jp_report()`](https://skhademioore.github.io/joinpoint/reference/jp_report.md).

@@ -140,13 +140,19 @@ with the Box-Muller normal generator, a normal deviate R keeps outside
 
 <dt id="arg-n-resample">n_resample<a class="anchor" aria-label="anchor" href="#arg-n-resample"></a></dt>
 <dd><p>Number of resampled data sets for the empirical quantile
-confidence intervals (default 5001).</p></dd>
+confidence intervals (default 5001). The empirical p value is twice the
+fraction of resampled estimates on the other side of zero, at least
+<code>1 / n_resample</code> (its resolution); the interval uses interpolated
+quantiles, so with few resamples the two can disagree near the
+significance level. The significance flags follow the p values.</p></dd>
 
 
 <dt id="arg-eq-seed">eq_seed<a class="anchor" aria-label="anchor" href="#arg-eq-seed"></a></dt>
 <dd><p>Random number seed for the empirical quantile method
 (<code>NULL</code> for the current random number stream). The global random number
-state is saved before the seed is set and restored afterwards.</p></dd>
+state is saved before the seed is set and restored afterwards (except
+for the normal deviate cached by the Box-Muller generator; see
+<code><a href="https://rdrr.io/r/base/Random.html" class="external-link">RNGkind()</a></code>).</p></dd>
 
 
 <dt id="arg-eq-final-only">eq_final_only<a class="anchor" aria-label="anchor" href="#arg-eq-final-only"></a></dt>

@@ -35,7 +35,7 @@ jp_export(
 
 - prefix:
 
-  File name prefix.
+  File name prefix, without a folder.
 
 - model:
 

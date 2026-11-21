@@ -146,9 +146,12 @@ location.</p></dd>
 
 
 <dt id="arg-error-bars">error_bars<a class="anchor" aria-label="anchor" href="#arg-error-bars"></a></dt>
-<dd><p>Draw 95% confidence intervals of the observed values
-(observed value plus or minus 1.96 standard errors) when standard
-errors are available.</p></dd>
+<dd><p>Draw 95% confidence intervals of the observed values:
+exact Poisson or binomial limits for rates, proportions and counts
+calculated from counts with Poisson or binomial variation, otherwise the
+observed value plus or minus 1.96 standard errors (when standard errors
+are available). On a log axis a lower limit at or below zero runs to
+the bottom of the panel.</p></dd>
 
 
 <dt id="arg-log-y">log_y<a class="anchor" aria-label="anchor" href="#arg-log-y"></a></dt>

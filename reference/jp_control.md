@@ -79,13 +79,19 @@ jp_control(
 - n_resample:
 
   Number of resampled data sets for the empirical quantile confidence
-  intervals (default 5001).
+  intervals (default 5001). The empirical p value is twice the fraction
+  of resampled estimates on the other side of zero, at least
+  `1 / n_resample` (its resolution); the interval uses interpolated
+  quantiles, so with few resamples the two can disagree near the
+  significance level. The significance flags follow the p values.
 
 - eq_seed:
 
   Random number seed for the empirical quantile method (`NULL` for the
   current random number stream). The global random number state is saved
-  before the seed is set and restored afterwards.
+  before the seed is set and restored afterwards (except for the normal
+  deviate cached by the Box-Muller generator; see
+  [`RNGkind()`](https://rdrr.io/r/base/Random.html)).
 
 - eq_final_only:
 

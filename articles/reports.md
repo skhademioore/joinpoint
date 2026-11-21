@@ -120,7 +120,7 @@ jp_report(fit, file.path(dir, "mortality.qmd"),
     ---
     title: "Trends in mortality"
     author: "A. Analyst"
-    date: "2026-11-20"
+    date: "2026-11-21"
     format:
       html:
         embed-resources: true
@@ -199,17 +199,25 @@ and the other plot functions as in any chunk.
 
 ## Interactive graphics
 
-Every figure of the package can be drawn as an interactive graphic, with
-`interactive = TRUE` in the plot function and
+The trend figure
+([`autoplot()`](https://ggplot2.tidyverse.org/reference/autoplot.html)),
+the APC and AAPC figures
+([`plot_apc()`](https://skhademioore.github.io/joinpoint/reference/plot_apc.md),
+[`plot_aapc()`](https://skhademioore.github.io/joinpoint/reference/plot_apc.md))
+and the model selection figure
+([`plot_selection()`](https://skhademioore.github.io/joinpoint/reference/plot_selection.md))
+can be drawn as interactive graphics, with `interactive = TRUE` in the
+plot function and
 [`jp_interactive()`](https://skhademioore.github.io/joinpoint/reference/jp_interactive.md),
 or
 [`jp_interactive()`](https://skhademioore.github.io/joinpoint/reference/jp_interactive.md)
-on the fit directly. The graphic looks like the static figure. Hovering
-a segment shows its period, APC, confidence interval and p value and
-highlights the segment with its band and label; hovering an observation
-shows its value, its confidence interval and the fitted trend; hovering
-a joinpoint shows its location and confidence interval. The toolbar
-zooms and saves the graphic as an image.
+on the fit directly, with `plot` choosing the figure. The graphic looks
+like the static figure. Hovering a segment shows its period, APC,
+confidence interval and p value and highlights the segment with its band
+and label; hovering an observation shows its value, its confidence
+interval and the fitted trend; hovering a joinpoint shows its location
+and confidence interval. The toolbar zooms and saves the graphic as an
+image.
 
 ``` r
 
@@ -240,7 +248,8 @@ and
 [`ggiraph::renderGirafe()`](https://davidgohel.github.io/ggiraph/reference/renderGirafe.html)),
 and
 [`jp_save()`](https://skhademioore.github.io/joinpoint/reference/jp_save.md)
-writes them to a standalone web page:
+writes them to a standalone web page (without Pandoc, the page needs the
+folder of scripts written beside it):
 
 ``` r
 

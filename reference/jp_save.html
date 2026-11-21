@@ -103,7 +103,11 @@ presentation.</p>
 
 <dt id="arg-digits">digits<a class="anchor" aria-label="anchor" href="#arg-digits"></a></dt>
 <dd><p>Decimals of the numeric columns of a table (character
-columns, such as those of <code><a href="jp_table.html">jp_table()</a></code>, are written as they are).</p></dd>
+columns, such as those of <code><a href="jp_table.html">jp_table()</a></code>, are written as they are). In
+<code>.csv</code>, <code>.tsv</code> and <code>.txt</code> files numbers stay numeric (p values rounded
+to <code>digits</code> significant digits); other formats show p values with three
+decimals, and below 0.001 as "&lt; 0.001". Line breaks inside cells of
+Markdown and document tables become spaces.</p></dd>
 
 
 <dt id="arg-width-height-dpi">width, height, dpi<a class="anchor" aria-label="anchor" href="#arg-width-height-dpi"></a></dt>
@@ -136,7 +140,8 @@ columns, such as those of <code><a href="jp_table.html">jp_table()</a></code>, a
 includes a PDF of the figure written beside it), and <code>.html</code>, <code>.docx</code>,
 <code>.odt</code>, <code>.rtf</code>, <code>.pptx</code> and <code>.md</code> documents holding the figure.</p></li>
 <li><p>Interactive graphics (<code><a href="jp_interactive.html">jp_interactive()</a></code>): <code>.html</code>, a standalone web
-page.</p></li>
+page (without Pandoc, a page with its scripts in the folder
+<code>&lt;name&gt;_files</code> beside it).</p></li>
 <li><p>A <code>joinpoint</code> fit: a complete report, see <code><a href="jp_report.html">jp_report()</a></code>.</p></li>
 </ul><p>Word, OpenDocument, PowerPoint, RTF, HTML and PDF documents are made with
 Pandoc, which comes with RStudio and Quarto (or see
