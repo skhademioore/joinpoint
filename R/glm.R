@@ -26,16 +26,25 @@ jp_glm_fit <- function(x, gd, family, tau, extra = NULL) {
   fam <- jp_glm_family(family)
   ft <- suppressWarnings(stats::glm.fit(X, gd$y, weights = gd$w,
                                         offset = gd$off, family = fam))
+  if (!ft$converged && ft$rank == ncol(X)) {
+    st <- ft$coefficients
+    st[is.na(st)] <- 0
+    ft2 <- suppressWarnings(stats::glm.fit(
+      X, gd$y, weights = gd$w, offset = gd$off, family = fam, start = st,
+      control = stats::glm.control(maxit = 200L)
+    ))
+    if (ft2$rank == ncol(X) && ft2$deviance <= ft$deviance) ft <- ft2
+  }
   b <- ft$coefficients
   b[is.na(b)] <- 0
   eta <- drop(X %*% b)
   mu_eta <- fam$mu.eta(eta + gd$off)
   mu <- fam$linkinv(eta + gd$off)
   found <- ft$converged && !ft$boundary && ft$rank == ncol(X)
+  names(b) <- colnames(X)
   coef <- b
   coef[1L] <- b[1L] - b[2L] * ctr
-  names(coef) <- colnames(X)
-  list(coef = coef, eta = eta, W = gd$w * mu_eta^2 / fam$variance(mu),
+  list(coef = coef, coef_c = b, eta = eta, W = gd$w * mu_eta^2 / fam$variance(mu),
        z = eta + (gd$y - mu) / mu_eta, deviance = ft$deviance,
        pearson = sum(gd$w * (gd$y - mu)^2 / fam$variance(mu)), X = X,
        ctr = ctr, tau = tau,
@@ -81,7 +90,22 @@ jp_glm_search <- function(x, gd, family, cand, cons, k, extra = NULL) {
     X <- cbind(base, H[, cf[, i], drop = FALSE])
     ft <- suppressWarnings(stats::glm.fit(X, gd$y, weights = gd$w,
                                           offset = gd$off, family = fam))
-    if (ft$rank < ncol(X)) Inf else ft$deviance
+    if (ft$rank < ncol(X)) {
+      return(Inf)
+    }
+    # Candidates that stop short of convergence within the default
+    # iterations continue from where they stopped, so that every deviance
+    # compared is (as far as it exists) the maximum of the likelihood.
+    if (!ft$converged) {
+      st <- ft$coefficients
+      st[is.na(st)] <- 0
+      ft2 <- suppressWarnings(stats::glm.fit(
+        X, gd$y, weights = gd$w, offset = gd$off, family = fam, start = st,
+        control = stats::glm.control(maxit = 200L)
+      ))
+      if (ft2$rank == ncol(X) && ft2$deviance <= ft$deviance) ft <- ft2
+    }
+    ft$deviance
   }, numeric(1))
   if (!any(is.finite(dev))) {
     return(NULL)
@@ -97,8 +121,14 @@ jp_glm_model <- function(ft, x, family, phi, jump = NULL) {
   k <- length(ft$tau)
   tau <- ft$tau
   p <- ncol(ft$X)
-  Vc <- if (ft$ok) {
-    phi * chol2inv(chol(crossprod(ft$X * sqrt(ft$W))))
+  # Inverse information from the QR factorization of the weighted design
+  # (forming the cross product first would square its condition number).
+  qx <- qr(ft$X * sqrt(ft$W), tol = 1e-11)
+  Vc <- if (ft$ok && qx$rank == p) {
+    Ri <- chol2inv(qr.R(qx))
+    V0 <- matrix(0, p, p)
+    V0[qx$pivot, qx$pivot] <- Ri
+    phi * V0
   } else {
     matrix(NA_real_, p, p)
   }
@@ -119,7 +149,8 @@ jp_glm_model <- function(ft, x, family, phi, jump = NULL) {
   si <- 2L * seq_len(nseg)
   n <- length(x)
   list(
-    k = k, tau = tau, coef = ft$coef, slopes = jp_slopes(ft$coef, k),
+    k = k, tau = tau, coef = ft$coef, coef_c = ft$coef_c, ctr = ft$ctr,
+    slopes = jp_slopes(ft$coef, k),
     intercepts = jp_intercepts(ft$coef, tau),
     se_slopes = sqrt(diag(V)[si]), se_intercepts = sqrt(diag(V)[si - 1L]),
     vcov_gp = V, vcov_slopes = V[si, si, drop = FALSE], df = Inf,
@@ -145,6 +176,12 @@ jp_glm_models <- function(x, gd, family, cand, cons, kmin, kmax, extra,
          "every placement gives a rank deficient design (are covariates ",
          "linearly dependent on the joinpoint terms?). Lower `kmin`.",
          call. = FALSE)
+  }
+  if (!all(ok)) {
+    warning("No identifiable model with ",
+            paste((kmin:kmax)[!ok], collapse = ", "), " joinpoints: every ",
+            "placement gives a rank deficient design. Those numbers of ",
+            "joinpoints are left out of the selection.", call. = FALSE)
   }
   fits <- fits[ok]
   ks <- (kmin:kmax)[ok]
@@ -206,6 +243,17 @@ jp_glm_lrt <- function(x, gd, family, models, cand, cons, kmin, kmax, alpha,
   rows <- list()
   while (a < b) {
     m0 <- models[[which(ks == a)]]
+    if (!isTRUE(m0$converged)) {
+      warning("The likelihood ratio test of ", a, " against ", b,
+              " joinpoints was not performed: the null model has no maximum ",
+              "likelihood estimate to simulate from. Selection stops at ", a,
+              " joinpoints.", call. = FALSE)
+      rows[[length(rows) + 1L]] <- data.frame(
+        null = a, alternative = b, statistic = NA_real_, p_value = NA_real_,
+        alpha = alpha / (kmax - a), reject = FALSE, simulations = 0
+      )
+      break
+    }
     stat <- m0$sse - models[[which(ks == b)]]$sse
     mu <- jp_glm_family(family)$linkinv(m0$fitted + gd$off)
     mc <- jp_mc_pvalue(stat, function(nb) vapply(seq_len(nb), function(i) {
@@ -220,7 +268,8 @@ jp_glm_lrt <- function(x, gd, family, models, cand, cons, kmin, kmax, alpha,
       if (is.null(f0) || is.null(f1)) NA_real_ else f0$deviance - f1$deviance
     }, numeric(1)), B, n_exceed, batch = if (is.null(n_exceed)) B else 1L)
     lev <- alpha / (kmax - a)
-    reject <- mc[["p"]] < lev
+    jp_mc_check(mc, a, b)
+    reject <- isTRUE(mc[["p"]] < lev)
     rows[[length(rows) + 1L]] <- data.frame(
       null = a, alternative = b, statistic = stat, p_value = mc[["p"]],
       alpha = lev, reject = reject, simulations = mc[["n"]]

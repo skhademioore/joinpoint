@@ -64,7 +64,8 @@ jp_permutation_select <- function(x, S, models, cand, cons, kmin, kmax,
       jp_ratio(g$sse[, a + 1L], g$sse[, b + 1L], tol)
     }, n_perm, n_exceed, batch = if (is.null(n_exceed)) 512L else 32L)
     lev <- alpha / (kmax - a)
-    reject <- mc[["p"]] < lev
+    jp_mc_check(mc, a, b)
+    reject <- isTRUE(mc[["p"]] < lev)
     rows[[length(rows) + 1L]] <- data.frame(
       null = a, alternative = b, statistic = stat, p_value = mc[["p"]],
       alpha = lev, reject = reject, simulations = mc[["n"]]
@@ -99,12 +100,28 @@ jp_mc_pvalue <- function(stat, draw, B, h = NULL, batch = 512L) {
     hit <- jp_reaches(t, stat)
     if (!is.null(h) && r + sum(hit) >= h) {
       L <- used + which(r + cumsum(hit) >= h)[1L]
-      return(c(p = h / L, n = L))
+      return(c(p = h / L, n = L, failed = tried - used - length(t)))
     }
     r <- r + sum(hit)
     used <- used + length(t)
   }
-  c(p = (r + 1) / (used + 1), n = used)
+  # Without a usable simulated statistic the test is undecided.
+  c(p = if (used > 0L) (r + 1) / (used + 1) else NA_real_, n = used,
+    failed = tried - used)
+}
+
+# Warns about simulated data sets that could not be fitted (left out of the
+# Monte Carlo p value) and about tests left undecided.
+jp_mc_check <- function(mc, a, b) {
+  if (is.na(mc[["p"]])) {
+    warning("No simulated data set of the test of ", a, " against ", b,
+            " joinpoints could be fitted; the test is undecided and the ",
+            "null model is kept.", call. = FALSE)
+  } else if (mc[["failed"]] > 0) {
+    warning(mc[["failed"]], " simulated data sets of the test of ", a,
+            " against ", b, " joinpoints could not be fitted and were left ",
+            "out of its p value.", call. = FALSE)
+  }
 }
 
 # Simulated statistics that reach the observed one, ties included: the
@@ -129,11 +146,14 @@ jp_ratio <- function(sse0, sse1, tol = 0) {
 # models, or the rounding error of the response when that is zero. It does
 # not change when a component of the common design (a constant, a linear
 # trend, a covariate or a jump) is added to the response.
-jp_tiny <- function(U, y, x = NULL, extra = NULL) {
-  # The scale of the numerical zero is the variation left after the base
-  # model that every candidate contains (intercept, slope given `x`, and the
-  # `extra` columns of covariates and jumps), so that a large common
-  # component does not swallow the differences between candidates.
+jp_tiny <- function(U, y, x = NULL, extra = NULL, rel = 1e-10) {
+  # The numerical zero is the rounding error of a residual vector of the
+  # (whitened) responses. For simulated responses, whose sums of squares
+  # come from the compiled search on cross products, it also includes the
+  # fraction `rel` of the variation left after the base model that every
+  # candidate contains (intercept, slope given `x`, and the `extra` columns
+  # of covariates and jumps), the precision of that search; the observed
+  # responses are searched to full precision and use `rel = 0`.
   yw <- drop(jp_apply_whiten(U, y))
   B <- if (is.null(x) || !isTRUE(stats::sd(x) > 0)) {
     matrix(1, length(y), 1L)
@@ -142,7 +162,8 @@ jp_tiny <- function(U, y, x = NULL, extra = NULL) {
   }
   if (!is.null(extra)) B <- cbind(B, extra)
   dev <- qr.resid(qr(jp_apply_whiten(U, B)), yw)
-  max(1e-10 * sum(dev^2), 100 * length(y) * (.Machine$double.eps * max(abs(yw)))^2,
+  max(rel * sum(dev^2),
+      100 * length(y) * (.Machine$double.eps * max(abs(yw)))^2,
       .Machine$double.xmin)
 }
 
@@ -178,6 +199,7 @@ jp_refit_many <- function(x, Y, S, taus, k, extra = NULL) {
   ctr <- mean(x)
   slopes <- matrix(NA_real_, B, k + 1L)
   coefs <- matrix(NA_real_, B, 2L + k + if (is.null(extra)) 0L else ncol(extra))
+  coefs_c <- coefs
   key <- if (k) apply(taus, 1L, paste, collapse = "|") else rep("", B)
   for (kk in unique(key)) {
     cols <- which(key == kk)
@@ -188,11 +210,13 @@ jp_refit_many <- function(x, Y, S, taus, k, extra = NULL) {
     b <- qr.coef(qr(Xw), Yw[, cols, drop = FALSE])
     b[is.na(b)] <- 0
     b <- matrix(b, nrow = ncol(X))
+    coefs_c[cols, ] <- t(b)
     b[1L, ] <- b[1L, ] - b[2L, ] * ctr
     coefs[cols, ] <- t(b)
     slopes[cols, ] <- t(apply(b, 2L, jp_slopes, k = k))
   }
-  list(slopes = slopes, coef = coefs, tau = taus)
+  list(slopes = slopes, coef = coefs, coef_c = coefs_c, ctr = ctr,
+       tau = taus)
 }
 
 # Empirical quantile resampling for a fitted model.
@@ -222,7 +246,10 @@ jp_eq_pvalue <- function(theta, tol = 0) {
     return(NA_real_)
   }
   zero <- abs(theta) <= tol
-  min(1, 2 * min(sum(theta < 0 | zero), sum(theta > 0 | zero)) / B)
+  # Without any resample on the other side of zero the p value is below
+  # the resolution 2 / B of the resamples; it is reported as 1 / B rather
+  # than 0.
+  max(1 / B, min(1, 2 * min(sum(theta < 0 | zero), sum(theta > 0 | zero)) / B))
 }
 
 # Rounding error bound of the least squares slopes of the model, one per

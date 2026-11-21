@@ -176,3 +176,78 @@ test_that("the level of the response does not decide whether a slope is zero", {
   expect_equal(a1$p_value, a0$p_value)
   expect_true(a1$significant)
 })
+
+test_that("a joinpoint on an irregular grid is found", {
+  x <- c(1:5, 1e7 * (1:4))
+  y <- pmin(x, 3)
+  f <- L(data.frame(x, y), kmin = 1, kmax = 1, method = "bic")
+  expect_equal(joinpoints(f)$estimate, 3)
+})
+
+test_that("criteria and the search keep small SSEs beside large changes", {
+  x <- 1:30
+  f <- L(data.frame(x, y = 1e5 * pmax(x - 10, 0) + pmax(x - 21, 0) +
+                      .01 * sin(x)), kmax = 2, method = "bic")
+  bic <- model_selection(f)$criteria$bic
+  expect_equal(bic[2:3], c(1.033161, -9.240771), tolerance = 1e-5)
+  expect_equal(f$fits[[1]]$k_selected, 2)
+  f <- L(data.frame(x, y = 1e7 * pmax(x - 10, 0) + pmax(x - 21, 0) +
+                      .01 * sin(x)), kmin = 2, kmax = 2, method = "bic")
+  expect_equal(joinpoints(f)$estimate, c(10, 21))
+  expect_lt(model_selection(f)$criteria$sse, .01)
+})
+
+test_that("fitted values keep their precision far from the origin", {
+  x <- 2 * (1:8)
+  f <- L(data.frame(x, y = 4 + .4 * x), kmax = 0, shift = 1e16)
+  expect_lt(max(abs(residuals(f))), 1e-8)
+  x <- 1:8
+  d <- data.frame(x, y = 7 + 3.7 * x + .05 * sin(x))
+  expect_equal(fitted(L(d, kmax = 0, shift = 1e15)), fitted(L(d, kmax = 0)),
+               tolerance = 1e-10)
+})
+
+test_that("a constant series has an exact zero trend", {
+  a <- apc(L(data.frame(x = 1:7, y = 10, s = 2:8), se = s, kmax = 0))
+  expect_equal(a$estimate, 0)
+  expect_equal(a$p_value, 1)
+  expect_false(a$significant)
+  expect_true(a$lower <= 0 && a$upper >= 0)
+})
+
+test_that("an unidentified joinpoint gets the whole admissible interval", {
+  j <- joinpoints(L(data.frame(x = 1:20, y = 3 + .7 * (1:20)), kmin = 1,
+                    kmax = 1, method = "bic"))
+  expect_equal(c(j$lower, j$upper), c(3, 18))
+})
+
+test_that("an aliased parameter gets no standard error", {
+  x <- 1:15
+  z <- pmax(x - 7, 0) + (x == 7)
+  f <- L(data.frame(x, y = 10 + x + 5 * pmax(x - 7, 0) + .02 * sin(x), z),
+         kmin = 1, kmax = 1, covariates = ~ z)
+  me <- model_estimates(f)
+  expect_true(is.na(me$se[me$parameter == "Slope 2"]))
+  expect_true(is.na(me$se[me$parameter == "Slope 2 - Slope 1"]))
+  expect_true(is.finite(me$se[me$parameter == "Slope 1"]))
+})
+
+test_that("likelihood candidates are compared at convergence", {
+  d <- data.frame(x = 1:10, n = c(1000, 1, 1000, 100, 1000, 10, 1, 1, 1, 1),
+                  p = 10^c(6, 6, 7, 7, 4, 3, 2, 3, 2, 1))
+  m <- joinpoint(d, x, count = n, population = p, family = "poisson",
+                 kmin = 1, kmax = 1, method = "bic")
+  expect_equal(joinpoints(m)$estimate, 4)
+  expect_equal(model_selection(m)$criteria$deviance, 10988.34,
+               tolerance = 1e-6)
+  # A nearly collinear covariate: the covariance comes from the QR factor.
+  x <- 1:16
+  d <- data.frame(x, z = x + 1e-7 * sin(x), p = 1000,
+                  n = c(5, 8, 9, 9, 8, 11, 13, 8, 14, 11, 9, 16, 18, 13, 15, 14))
+  f <- joinpoint(d, x, count = n, population = p, family = "poisson",
+                 kmax = 0, covariates = ~ z)
+  ref <- summary(stats::glm(n ~ x + z, stats::poisson(), data = d,
+                            offset = log(p / 1e5)))$coefficients[, 2]
+  expect_equal(unname(sqrt(diag(vcov(f)))[2:3]), unname(ref[2:3]),
+               tolerance = 1e-4)
+})

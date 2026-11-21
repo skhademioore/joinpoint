@@ -23,11 +23,12 @@ jp_fit_fixed <- function(x, y, S, tau, extra = NULL, U = jp_whiten_mat(S)) {
   b[is.na(b)] <- 0
   fitted <- drop(X %*% b)
   rw <- drop(yw - Xw %*% b)
-  b[1L] <- b[1L] - b[2L] * ctr
   names(b) <- colnames(X)
+  bc <- b
+  b[1L] <- b[1L] - b[2L] * ctr
   list(
-    coef = b, fitted = fitted, resid = y - fitted, wresid = rw,
-    sse = sum(rw^2), tau = tau
+    coef = b, coef_c = bc, ctr = ctr, fitted = fitted, resid = y - fitted,
+    wresid = rw, sse = sum(rw^2), tau = tau
   )
 }
 
@@ -43,8 +44,10 @@ jp_intercepts <- function(coef, tau) {
 }
 
 # Evaluates the fitted joinpoint function (model scale) at new x values.
-jp_eval <- function(coef, tau, xnew, extra_new = NULL) {
-  X <- jp_design(xnew, tau, extra_new)
+# With `ctr`, `coef` has its intercept at x = ctr (the centered fit), which
+# keeps the precision of the fit when x is far from zero.
+jp_eval <- function(coef, tau, xnew, extra_new = NULL, ctr = 0) {
+  X <- jp_design(xnew - ctr, tau - ctr, extra_new)
   drop(X %*% coef[seq_len(ncol(X))])
 }
 
@@ -92,6 +95,20 @@ jp_unconstrained <- function(x, y, S, tau, jump = NULL, covars = NULL) {
     R <- qr.R(qx)[seq_len(p), seq_len(p), drop = FALSE]
     Ri <- backsolve(R, diag(p))
     V[piv, piv] <- sigma2 * Ri %*% t(Ri)
+    # With a rank deficient design the pivoted basis gives values for the
+    # parameters it keeps, but only parameters in the row space of the
+    # design are estimable; the others (a slope aliased with a covariate,
+    # for example) are reported as missing.
+    if (p < ncol(X)) {
+      sv <- svd(Xw)
+      null <- sv$v[, sv$d <= 1e-9 * sv$d[1L], drop = FALSE]
+      if (nrow(sv$v) > length(sv$d)) {
+        null <- cbind(null, qr.Q(qr(sv$v), complete = TRUE)[, -seq_along(sv$d),
+                                                             drop = FALSE])
+      }
+      bad_par <- rowSums(null^2) > 1e-8
+      V[bad_par, ] <- V[, bad_par] <- NA_real_
+    }
   }
   # Segments with fewer than two retained observations have neither an
   # estimable slope nor an estimable intercept; their statistics are
@@ -130,7 +147,8 @@ jp_build_model <- function(x, y, S, tau, log, jump = NULL, covars = NULL) {
   se_int <- sqrt(diag(V)[un$intercept_index])
   bounds <- c(min(x), tau, max(x))
   list(
-    k = k, tau = tau, coef = ft$coef, slopes = slopes, intercepts = ints,
+    k = k, tau = tau, coef = ft$coef, coef_c = ft$coef_c, ctr = ft$ctr,
+    slopes = slopes, intercepts = ints,
     se_slopes = se_slope, se_intercepts = se_int, vcov_gp = V,
     vcov_slopes = V[un$slope_index, un$slope_index, drop = FALSE],
     df = un$df, sse = ft$sse,

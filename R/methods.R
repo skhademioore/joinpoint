@@ -144,7 +144,7 @@ model_selection <- function(object) {
       mm$n - 2 * (mm$k + 1) - length(mm$extra_names)
     }, numeric(1))
     if ("sse" %in% names(tab)) {
-      tab$mse <- tab$sse / tab$df
+      tab$mse <- ifelse(tab$df > 0, tab$sse / tab$df, NA_real_)
     } else {
       tab$dispersion <- vapply(f$models, `[[`, numeric(1), "mse")
     }
@@ -152,7 +152,7 @@ model_selection <- function(object) {
     # residuals (values well below 2 suggest positive autocorrelation); both
     # are undefined for a constant series or an exact fit.
     U <- jp_whiten_mat(f$S)
-    tol <- jp_tiny(U, f$y, f$x, f$extra)
+    tol <- jp_tiny(U, f$y, f$x, f$extra, rel = 0)
     sst <- sum(qr.resid(qr(jp_apply_whiten(U, rep(1, length(f$y)))),
                         drop(jp_apply_whiten(U, f$y)))^2)
     tab$r_squared <- vapply(f$models, function(mm) {
@@ -449,7 +449,7 @@ predict.joinpoint <- function(object, newdata = NULL, model = "final",
   # One row per row of newdata, in its order.
   res <- newdata[object$by]
   res$x <- newdata[[xn]] + object$settings$shift
-  res$fit <- NA_real_
+  res$fit <- rep(NA_real_, nrow(res))
   if (!is.null(out)) res$fit[out$.row] <- out$fit
   rownames(res) <- NULL
   res
@@ -463,7 +463,7 @@ jp_cohort_label <- function(object, g) {
   if (is.null(object$by)) {
     return(rep("All", length(g)))
   }
-  all <- do.call(paste, c(lapply(object$cohorts, as.character),
+  all <- do.call(paste, c(unname(lapply(object$cohorts, as.character)),
                           sep = ", "))
   out <- all[g]
   dup <- out %in% all[duplicated(all)]

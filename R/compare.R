@@ -235,6 +235,9 @@ jp_compare_aapc <- function(f1, f2, alpha) {
     return(NULL)
   }
   common <- intersect(a1$range, a2$range)
+  if (!length(common)) {
+    return(NULL)
+  }
   a1 <- a1[match(common, a1$range), ]
   a2 <- a2[match(common, a2$range), ]
   z <- stats::qnorm(1 - alpha / 2)

@@ -20,7 +20,8 @@
 #'   includes a PDF of the figure written beside it), and `.html`, `.docx`,
 #'   `.odt`, `.rtf`, `.pptx` and `.md` documents holding the figure.
 #' * Interactive graphics ([jp_interactive()]): `.html`, a standalone web
-#'   page.
+#'   page (without Pandoc, a page with its scripts in the folder
+#'   `<name>_files` beside it).
 #' * A `joinpoint` fit: a complete report, see [jp_report()].
 #'
 #' Word, OpenDocument, PowerPoint, RTF, HTML and PDF documents are made with
@@ -33,7 +34,11 @@
 #' @param title Optional caption of the table or figure.
 #' @param note Optional note printed under the table or figure.
 #' @param digits Decimals of the numeric columns of a table (character
-#'   columns, such as those of [jp_table()], are written as they are).
+#'   columns, such as those of [jp_table()], are written as they are). In
+#'   `.csv`, `.tsv` and `.txt` files numbers stay numeric (p values rounded
+#'   to `digits` significant digits); other formats show p values with three
+#'   decimals, and below 0.001 as "< 0.001". Line breaks inside cells of
+#'   Markdown and document tables become spaces.
 #' @param width,height,dpi Size of a figure in inches and its resolution.
 #' @param label Optional LaTeX label (`.tex` output).
 #' @param ... Further arguments to [jp_report()] when `x` is a fit.
@@ -71,8 +76,27 @@ jp_save <- function(x, file, title = NULL, note = NULL, digits = 3,
     }
     jp_need("htmlwidgets", "saving interactive graphics")
     out <- jp_abs(file)
-    htmlwidgets::saveWidget(x, out, title = title %||% "joinpoint",
-                            selfcontained = jp_pandoc_ok(FALSE))
+    # Written in a private folder and then moved, so that nothing beside
+    # the destination (or in the working directory) is replaced or removed.
+    # Without Pandoc the page needs its <name>_files folder of scripts.
+    stage <- tempfile("joinpoint-widget")
+    dir.create(stage)
+    on.exit(unlink(stage, recursive = TRUE), add = TRUE)
+    stem <- sub("\\.[^.]*$", "", basename(out))
+    self <- jp_pandoc_ok(FALSE)
+    owd <- setwd(stage)
+    on.exit(setwd(owd), add = TRUE, after = FALSE)
+    htmlwidgets::saveWidget(x, basename(out), title = title %||% "joinpoint",
+                            selfcontained = self,
+                            libdir = paste0(stem, "_files"))
+    setwd(owd)
+    file.copy(file.path(stage, basename(out)), out, overwrite = TRUE)
+    if (!self) {
+      file.copy(file.path(stage, paste0(stem, "_files")), dirname(out),
+                recursive = TRUE, overwrite = TRUE)
+      message("Pandoc is not available: the page needs the folder ", stem,
+              "_files beside it.")
+    }
     return(invisible(file))
   }
   if (inherits(x, "ggplot")) {
@@ -102,12 +126,19 @@ jp_ext <- function(file) {
 jp_doc_formats <- c("html", "docx", "odt", "rtf", "pptx", "pdf")
 
 jp_save_table <- function(x, file, ext, title, note, digits, label) {
+  if (ext %in% c("csv", "tsv", "txt")) {
+    # Delimited files are read by other software: numbers stay numbers.
+    tab <- jp_round_table(x, digits)
+    if (ext == "csv") {
+      utils::write.csv(tab, file, row.names = FALSE, na = "")
+    } else {
+      utils::write.table(tab, file, sep = "\t", row.names = FALSE, na = "",
+                         quote = jp_quote_cols(tab), qmethod = "double")
+    }
+    return(file)
+  }
   tab <- jp_format_table(x, digits)
   switch(ext,
-    csv = utils::write.csv(tab, file, row.names = FALSE),
-    tsv = ,
-    txt = utils::write.table(tab, file, sep = "\t", row.names = FALSE,
-                             quote = jp_quote_cols(tab), qmethod = "double"),
     tex = writeLines(jp_latex_table(tab, title, note, label,
                                     jp_numeric_cols(x)), file),
     md = writeLines(jp_md_table(tab, title, note, jp_numeric_cols(x)), file),
@@ -130,6 +161,10 @@ jp_save_figure <- function(x, file, ext, title, note, width, height, dpi,
                     bg = "white")
   } else if (ext == "tex") {
     pdf <- sub("\\.[^.]*$", ".pdf", file)
+    if (grepl("[{}%#&~^$\\\\]", basename(pdf), perl = TRUE)) {
+      stop("The figure of a .tex file is included by its file name, which ",
+           "cannot contain the characters { } % # & ~ ^ $ \\.", call. = FALSE)
+    }
     ggplot2::ggsave(pdf, x, width = width, height = height, bg = "white")
     writeLines(c(
       "\\begin{figure}[htbp]", "\\centering",
@@ -146,12 +181,15 @@ jp_save_figure <- function(x, file, ext, title, note, width, height, dpi,
     png <- if (ext == "md") {
       sub("\\.[^.]*$", ".png", file)
     } else {
-      tempfile("figure", fileext = ".png")
+      p <- tempfile("figure", fileext = ".png")
+      on.exit(unlink(p), add = TRUE)
+      p
     }
     ggplot2::ggsave(png, x, width = width, height = height, dpi = dpi,
                     bg = "white")
-    md <- c(paste0("![", jp_md_escape(title %||% ""), "](",
-                   if (ext == "md") basename(png) else png, ")"),
+    # The destination in angle brackets may contain spaces.
+    md <- c(paste0("![", jp_md_escape(title %||% ""), "](<",
+                   if (ext == "md") basename(png) else png, ">)"),
             if (!is.null(note)) c("", jp_md_escape(note)))
     if (ext == "md") writeLines(md, file) else jp_pandoc(md, file, ext)
   } else {
@@ -161,8 +199,24 @@ jp_save_figure <- function(x, file, ext, title, note, width, height, dpi,
   file
 }
 
-# Numeric columns of a table, formatted with fixed decimals (p values as
-# "< 0.001"); missing values become empty cells.
+# Numeric columns rounded to `digits` decimals, p values to `digits`
+# significant digits, for delimited files.
+jp_round_table <- function(x, digits) {
+  x <- as.data.frame(x, stringsAsFactors = FALSE)
+  rownames(x) <- NULL
+  for (j in seq_along(x)) {
+    v <- x[[j]]
+    if (is.numeric(v) && !all(is.na(v) | v == round(v))) {
+      pv <- grepl("^p(_value|_unadjusted)?$", names(x)[j])
+      x[[j]] <- if (pv) signif(v, digits) else round(v, digits)
+    }
+  }
+  x
+}
+
+# Numeric columns of a table, formatted with fixed decimals (p values with
+# three decimals, as "< 0.001" below 0.001); missing values become empty
+# cells.
 jp_format_table <- function(x, digits) {
   x <- as.data.frame(x, stringsAsFactors = FALSE)
   rownames(x) <- NULL
@@ -234,12 +288,12 @@ jp_latex_table <- function(tab, title = NULL, note = NULL, label = NULL,
     "\\end{table}")
 }
 
+# Literal text in Markdown (and Pandoc Markdown): line breaks become spaces
+# (a table cell is one line) and the characters with a meaning (emphasis,
+# code, links, HTML and entities, math, citations, ...) are escaped.
 jp_md_escape <- function(v) {
-  v <- gsub("\\", "\\\\", as.character(v), fixed = TRUE)
-  v <- gsub("|", "\\|", v, fixed = TRUE)
-  v <- gsub("*", "\\*", v, fixed = TRUE)
-  v <- gsub("_", "\\_", v, fixed = TRUE)
-  gsub("<", "\\<", v, fixed = TRUE)
+  v <- gsub("\r\n|\r|\n", " ", as.character(v))
+  gsub("([\\\\`*_{}\\[\\]<>|&$@~^#!])", "\\\\\\1", v, perl = TRUE)
 }
 
 jp_md_table <- function(tab, title = NULL, note = NULL,
@@ -351,6 +405,12 @@ jp_report <- function(object, file, title = "Joinpoint regression analysis",
                        several.ok = TRUE)
   }
   if (is.null(aapc(object, model))) plots <- setdiff(plots, "aapc")
+  # Selection by a sequential test with a single candidate model performs
+  # no test, and there is nothing to plot.
+  if (object$settings$method %in% c("permutation", "lrt") &&
+      is.null(model_selection(object)$tests)) {
+    plots <- setdiff(plots, "selection")
+  }
   out_format <- switch(ext, rmd = format, qmd = format, ext)
   if (!out_format %in% c("html", "docx", "odt", "pdf", "md", "tex")) {
     stop("Reports are written as .Rmd, .qmd, .html, .docx, .odt, .pdf, .md ",
@@ -412,7 +472,8 @@ jp_report <- function(object, file, title = "Joinpoint regression analysis",
   ), script, useBytes = TRUE)
   log <- file.path(wd, "render.log")
   status <- system2(file.path(R.home("bin"), "Rscript"),
-                    c("--no-save", "--no-restore", shQuote(script)),
+                    c("--no-save", "--no-restore", "--no-site-file",
+                      "--no-init-file", shQuote(script)),
                     stdout = if (isTRUE(quiet)) log else "",
                     stderr = if (isTRUE(quiet)) log else "")
   made <- file.path(wd, basename(out))
@@ -455,6 +516,47 @@ jp_levels_text <- function(ctl, nm) {
            nm$apc_abbr, "s and ", jp_level(ctl$alpha_aapc), " for the ",
            nm$aapc_abbr, "s")
   }
+}
+
+# Sentences on the settings that shape the fit beyond the model and the
+# selection: excluded observations, autocorrelated errors, covariates and a
+# coding change.
+jp_report_settings <- function(object, fits) {
+  s <- object$settings
+  out <- character()
+  if (length(s$exclude)) {
+    out <- c(out, paste0("Observations at ", jp_md_escape(jp_title(s$x)), " = ",
+                         paste(format(s$exclude), collapse = ", "),
+                         " were excluded from the fit and are shown only."))
+  }
+  rho <- vapply(fits, function(f) as.numeric(f$rho %||% 0), numeric(1))
+  if (!is.null(s$autocorrelation) && !identical(s$autocorrelation, 0)) {
+    out <- c(out, paste0(
+      "The errors were modeled as first order autocorrelated, with ",
+      if (identical(s$autocorrelation, "estimate")) {
+        "the correlation estimated from the data ("
+      } else {
+        "the correlation set to "
+      },
+      paste(unique(format(round(rho, 3))), collapse = ", "),
+      if (identical(s$autocorrelation, "estimate")) ")", "."))
+  }
+  if (!is.null(s$covariates)) {
+    out <- c(out, paste0("The trends are adjusted for the covariates ",
+                         jp_md_escape(paste(deparse(s$covariates[[2L]]),
+                                            collapse = "")), "."))
+  }
+  if (!is.null(s$jump)) {
+    out <- c(out, paste0(
+      "A coding change after ", jp_md_escape(jp_title(s$x)), " = ",
+      format(s$jump), " is modeled ",
+      if (!is.null(s$comparability_ratio)) {
+        paste0("with the comparability ratio ", format(s$comparability_ratio))
+      } else {
+        "as a jump"
+      }, "."))
+  }
+  if (length(out)) paste(c("", out), collapse = " ") else ""
 }
 
 # Source of the report: a YAML header, a setup chunk reading the fit, the
@@ -504,7 +606,12 @@ jp_report_source <- function(object, rds, title, author, model, plots,
                   selection = "plot_selection")
     ma <- if (p == "selection") "" else margs
     if (interactive) {
-      paste0("jp_interactive(fit, plot = \"", p, "\"", ma, ")")
+      # Decided when the document is knitted, so that the source still
+      # renders to other formats or without ggiraph.
+      c(paste0("if (knitr::is_html_output() && ",
+               "requireNamespace(\"ggiraph\", quietly = TRUE)) {"),
+        paste0("  jp_interactive(fit, plot = \"", p, "\"", ma, ")"),
+        "} else {", paste0("  ", fun, "(fit", ma, ")"), "}")
     } else {
       paste0(fun, "(fit", ma, ")")
     }
@@ -551,8 +658,9 @@ jp_report_source <- function(object, rds, title, author, model, plots,
     if (s$family != "gaussian") {
       " and, for these likelihood models, on the estimated joinpoints"
     },
-    "."
+    ".", jp_report_settings(object, fits)
   )
+  tests <- model_selection(object)$tests
   caption <- function(v) jp_r_str(v)
   c(yaml, "",
     "```{r setup, include = FALSE}",
@@ -583,6 +691,15 @@ jp_report_source <- function(object, rds, title, author, model, plots,
     paste0("knitr::kable(model_selection(fit)$criteria, digits = 3, ",
            "caption = \"Selection statistics of the fitted models.\")"),
     "```", "",
+    if (!is.null(tests)) c(
+      "```{r}",
+      paste0("knitr::kable(model_selection(fit)$tests, digits = 4, ",
+             "caption = ", caption(paste0(
+               "Sequential tests of the number of joinpoints (", method,
+               "): null and alternative numbers of joinpoints, statistic, p ",
+               "value, level of the test and number of simulated data sets.")),
+             ")"),
+      "```", ""),
     if (length(plots)) c("## Figures", "",
                          unlist(lapply(plots, function(p) {
                            fig(plot_code(p), if (p == "selection") {

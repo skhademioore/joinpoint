@@ -11,7 +11,9 @@ test_that("AAPC weights slopes by segment length (Clegg et al. 2009)", {
 
 test_that("empirical quantile p value is twice the smaller tail share", {
   expect_equal(joinpoint:::jp_eq_pvalue(c(-1, 1, 2, 3)), 0.5)
-  expect_equal(joinpoint:::jp_eq_pvalue(1:10), 0)
+  # No resample on the other side of zero: the p value is reported at the
+  # resolution of the resamples, not as zero.
+  expect_equal(joinpoint:::jp_eq_pvalue(1:10), 0.1)
 })
 
 test_that("AAPC of a range inside one segment equals the segment APC", {

@@ -18,7 +18,7 @@ jp_export(
 
 \item{dir}{Output directory (created if needed).}
 
-\item{prefix}{File name prefix.}
+\item{prefix}{File name prefix, without a folder.}
 
 \item{model}{\code{"all"} (every fitted model) or \code{"final"}.}
 

@@ -106,7 +106,16 @@ jp_grid_search <- function(x, Y, W, cand, cons, kmax, extra = NULL,
                                                              ncol(Y), 0L)),
                 profile = list(NULL)))
   }
-  Hw <- wh(outer(u, (cand - ctr) / scl, function(a, b) pmax(a - b, 0)))
+  # A hinge and its mirror image differ by a line, so either spans the same
+  # model with the base columns. The one of smaller norm (the shorter side
+  # of the candidate) keeps a change concentrated on a few observations of
+  # an irregular grid from vanishing in rounding error once the line is
+  # projected out.
+  uc <- (cand - ctr) / scl
+  Hw <- wh(outer(u, uc, function(a, b) pmax(a - b, 0)))
+  Hl <- wh(outer(u, uc, function(a, b) pmax(b - a, 0)))
+  left <- colSums(Hl^2) < colSums(Hw^2)
+  Hw[, left] <- Hl[, left]
   Hr <- qr.resid(qb, Hw)
   Hr[, colSums(Hr^2) <= 1e-14 * colSums(Hw^2)] <- 0
   res <- jp_grid_cpp(

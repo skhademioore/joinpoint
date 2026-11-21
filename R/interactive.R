@@ -65,9 +65,14 @@ jp_interactive <- function(x, plot = c("trend", "apc", "aapc", "selection"),
   if (!is.numeric(zoom) || length(zoom) != 1L || is.na(zoom) || zoom < 1) {
     stop("`zoom` must be a number of at least 1.", call. = FALSE)
   }
-  fs <- gdtools::font_set_auto()
+  jp_need("gdtools", "interactive graphics")
+  # gdtools may set this option while it builds a font set.
+  old <- options(GFONTS_DOWNLOAD_SLEEPTIME = getOption("GFONTS_DOWNLOAD_SLEEPTIME"))
+  on.exit(options(old), add = TRUE)
+  fs <- if (isTRUE(embed_fonts)) gdtools::font_set_auto() else jp_system_fonts()
   w <- ggiraph::girafe(
     ggobj = x, width_svg = width, height_svg = height, font_set = fs,
+    canvas_id = jp_canvas_id(),
     options = list(
       ggiraph::opts_tooltip(css = jp_tooltip_css, opacity = 1,
                             use_fill = FALSE, offx = 12, offy = 12),
@@ -86,6 +91,39 @@ jp_interactive <- function(x, plot = c("trend", "apc", "aapc", "selection"),
   w
 }
 
+# Fonts installed on the computer, named in the graphic without copies of
+# their files (nothing is written to the font cache of gdtools); the viewer
+# draws the text with its own fonts of these names or their generic
+# family. Without any of the usual system fonts, the font set of gdtools
+# is used.
+jp_system_fonts <- function() {
+  pick <- function(v) {
+    ok <- vapply(v, function(f) isTRUE(gdtools::font_family_exists(f)),
+                 logical(1))
+    if (any(ok)) v[ok][1L]
+  }
+  fam <- list(sans = pick(c("Arial", "Helvetica", "DejaVu Sans")),
+              serif = pick(c("Times New Roman", "Times", "DejaVu Serif")),
+              mono = pick(c("Courier New", "Courier", "DejaVu Sans Mono")))
+  if (is.null(fam$sans) || is.null(fam$serif) || is.null(fam$mono)) {
+    return(gdtools::font_set_auto())
+  }
+  fam$symbol <- pick(c("Symbol", "Apple Symbols")) %||% fam$sans
+  structure(c(fam, list(dependencies = list(), dsvg_fonts = fam,
+                        sources = lapply(fam, function(f) "system"))),
+            class = "font_set")
+}
+
+# Identifier of the SVG canvas of a widget, unique within the session and
+# made without the random number generator (ggiraph would otherwise draw
+# it and change the user's random number stream).
+jp_state <- new.env(parent = emptyenv())
+jp_canvas_id <- function() {
+  jp_state$n <- (jp_state$n %||% 0L) + 1L
+  paste0("jp", Sys.getpid(), "_", sprintf("%.0f", as.numeric(Sys.time()) * 1e3),
+         "_", jp_state$n)
+}
+
 jp_tooltip_css <- paste(
   "background:#ffffff;color:#0b0b0b;border:1px solid #c3c2b7;",
   "border-radius:4px;padding:6px 8px;font-family:sans-serif;",
@@ -94,9 +132,10 @@ jp_tooltip_css <- paste(
 
 # Stops with an informative message when a suggested package is missing.
 jp_need <- function(pkg, what) {
-  if (!requireNamespace(pkg, quietly = TRUE)) {
-    stop("The ", pkg, " package is needed for ", what, "; install it with ",
-         "install.packages(\"", pkg, "\").", call. = FALSE)
+  ok <- tryCatch(loadNamespace(pkg), error = function(e) e)
+  if (inherits(ok, "error")) {
+    stop("The ", pkg, " package is needed for ", what, " but could not be ",
+         "loaded: ", conditionMessage(ok), call. = FALSE)
   }
 }
 
@@ -149,7 +188,7 @@ jp_trend_tips <- function(pd, nm, digits, s) {
   sg$data_id <- paste0(sg$cohort, "|segment|", sg$segment)
   sg$tooltip <- paste0(
     head(sg$cohort), "Segment ", sg$segment, ": ", jp_num(sg$start), "-",
-    jp_num(sg$end), "<br>", nm$apc_abbr, " ", jp_fmt(sg$estimate, digits),
+    jp_num(sg$end), "<br>", jp_html(nm$apc_abbr), " ", jp_fmt(sg$estimate, digits),
     ifelse(sg$trend %in% c("Increasing", "Decreasing"), "*", ""),
     jp_tip_ci(sg$lower, sg$upper, digits, s$control$alpha_apc),
     jp_tip_p(sg$p_value), "<br>",
@@ -164,9 +203,8 @@ jp_trend_tips <- function(pd, nm, digits, s) {
   pt$data_id <- paste0(pt$cohort, "|x|", pt$x)
   pt$tooltip <- paste0(
     head(pt$cohort), xl, " ", jp_num(pt$x), "<br>Observed ", jp_num(pt$y),
-    ifelse(is.na(pt$se), "",
-           paste0(" (95% CI ", jp_num(pt$y - 1.96 * pt$se), ", ",
-                  jp_num(pt$y + 1.96 * pt$se), ")")),
+    ifelse(is.na(pt$lo), "",
+           paste0(" (95% CI ", jp_num(pt$lo), ", ", jp_num(pt$hi), ")")),
     "<br>Fitted trend ", jp_num(pt$fit),
     ifelse(pt$included, "", "<br><i>Excluded from the fit</i>")
   )

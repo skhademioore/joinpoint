@@ -51,8 +51,23 @@ jp_prepare <- function(x, r, se, count, population, type, variance, log,
       !is.null(count)) {
     # A supplied crude rate with its counts: the Poisson standard error has
     # the relative size 1 / sqrt(count) whatever the rate multiplier.
-    if (any(count[included] < 0, na.rm = TRUE)) {
+    if (any(!is.finite(count[included]))) {
+      stop("Poisson variance needs a count for every included observation.",
+           call. = FALSE)
+    }
+    if (any(count[included] < 0)) {
       stop("`count` must be nonnegative.", call. = FALSE)
+    }
+    # A zero count gets the half count correction, as for a rate calculated
+    # from counts: its rate is that of half an event, which needs the
+    # population.
+    corrected <- !is.na(count) & count == 0
+    if (any(corrected & included)) {
+      if (is.null(population)) {
+        stop("A crude rate with a zero count needs `population` for the ",
+             "half count correction.", call. = FALSE)
+      }
+      r[corrected] <- rate_per * 0.5 / population[corrected]
     }
     se <- r / sqrt(pmax(count, 0.5))
   } else if (type %in% c("crude_rate", "proportion", "percent") &&
@@ -63,6 +78,10 @@ jp_prepare <- function(x, r, se, count, population, type, variance, log,
     }
     ci <- count[included]
     pi <- population[included]
+    if (anyNA(ci) || anyNA(pi)) {
+      stop("`count` and `population` are needed for every included ",
+           "observation.", call. = FALSE)
+    }
     if (any(pi <= 0, na.rm = TRUE)) {
       stop("`population` must be positive.", call. = FALSE)
     }

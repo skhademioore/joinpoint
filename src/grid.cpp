@@ -38,7 +38,7 @@ struct GridState {
   std::vector<int> path;      // selected candidate indices (0 based)
   std::vector<double> best;   // nd x (kmax + 1) minimum SSE
   std::vector<int> argbest;   // per k: nd x k candidate indices (1 based)
-  std::vector<int> offs;      // offsets of each k block in argbest
+  std::vector<long long> offs;  // offsets of each k block in argbest
   std::vector<double> lrow;
   std::vector<double> tmp;    // nd scratch vector
   double tol;
@@ -141,6 +141,9 @@ List jp_grid_cpp(NumericMatrix G, NumericMatrix Bt, NumericVector yy, int p0,
       yy.size() != Bt.nrow()) {
     stop("inconsistent cross product dimensions");
   }
+  if (Bt.nrow() < 1) {
+    stop("at least one response is needed");
+  }
   const int m = q - p0;
   if (first_ok.size() != m || last_ok.size() != m || next_min.size() != m) {
     stop("constraint vectors must have one entry per candidate");
@@ -177,7 +180,9 @@ List jp_grid_cpp(NumericMatrix G, NumericMatrix Bt, NumericVector yy, int p0,
   s.tmp.assign(s.nd, 0.0);
   s.best.assign((size_t)s.nd * (kmax + 1), std::numeric_limits<double>::infinity());
   s.offs.assign(kmax + 2, 0);
-  for (int k = 1; k <= kmax + 1; k++) s.offs[k] = s.offs[k - 1] + (k - 1) * s.nd;
+  for (int k = 1; k <= kmax + 1; k++) {
+    s.offs[k] = s.offs[k - 1] + (long long)(k - 1) * s.nd;
+  }
   s.argbest.assign((size_t)s.offs[kmax + 1] + 1, NA_INTEGER);
   s.poff.assign(kmax + 2, 0);
   for (int k = 1; k <= kmax + 1; k++) s.poff[k] = s.poff[k - 1] + (long long)s.m * (k - 1);

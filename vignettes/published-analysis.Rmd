@@ -10,9 +10,9 @@ vignette: >
 ```{r setup, include = FALSE}
 knitr::opts_chunk$set(collapse = TRUE, comment = "#>", fig.width = 7,
                       fig.height = 4.2, dpi = 150, out.width = "100%")
-# The figures are interactive when the ggiraph package is installed, and
-# static otherwise.
-ia <- requireNamespace("ggiraph", quietly = TRUE)
+# The figures are interactive in HTML output when the ggiraph package is
+# installed, and static otherwise.
+ia <- requireNamespace("ggiraph", quietly = TRUE) && knitr::is_html_output()
 ```
 
 Khademioore and colleagues (2026, *Canadian Journal of Public Health*)

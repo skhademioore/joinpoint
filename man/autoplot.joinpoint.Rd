@@ -53,9 +53,12 @@ empirical quantile resamples, when available.}
 \item{joinpoint_ci}{Shade the confidence interval of each joinpoint
 location.}
 
-\item{error_bars}{Draw 95\% confidence intervals of the observed values
-(observed value plus or minus 1.96 standard errors) when standard
-errors are available.}
+\item{error_bars}{Draw 95\% confidence intervals of the observed values:
+exact Poisson or binomial limits for rates, proportions and counts
+calculated from counts with Poisson or binomial variation, otherwise the
+observed value plus or minus 1.96 standard errors (when standard errors
+are available). On a log axis a lower limit at or below zero runs to
+the bottom of the panel.}
 
 \item{log_y}{Use a logarithmic y axis.}
 

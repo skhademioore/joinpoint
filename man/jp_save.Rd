@@ -27,7 +27,11 @@ jp_save(
 \item{note}{Optional note printed under the table or figure.}
 
 \item{digits}{Decimals of the numeric columns of a table (character
-columns, such as those of \code{\link[=jp_table]{jp_table()}}, are written as they are).}
+columns, such as those of \code{\link[=jp_table]{jp_table()}}, are written as they are). In
+\code{.csv}, \code{.tsv} and \code{.txt} files numbers stay numeric (p values rounded
+to \code{digits} significant digits); other formats show p values with three
+decimals, and below 0.001 as "< 0.001". Line breaks inside cells of
+Markdown and document tables become spaces.}
 
 \item{width, height, dpi}{Size of a figure in inches and its resolution.}
 
@@ -56,7 +60,8 @@ presentation.
 includes a PDF of the figure written beside it), and \code{.html}, \code{.docx},
 \code{.odt}, \code{.rtf}, \code{.pptx} and \code{.md} documents holding the figure.
 \item Interactive graphics (\code{\link[=jp_interactive]{jp_interactive()}}): \code{.html}, a standalone web
-page.
+page (without Pandoc, a page with its scripts in the folder
+\verb{<name>_files} beside it).
 \item A \code{joinpoint} fit: a complete report, see \code{\link[=jp_report]{jp_report()}}.
 }
 

@@ -102,7 +102,8 @@ jp_eq_band <- function(f, m, xs, alpha = 0.05) {
   eq <- m$eq
   ex <- if (!is.null(m$jump)) cbind(as.numeric(xs >= m$jump))
   vals <- vapply(seq_len(nrow(eq$coef)), function(b) {
-    jp_eval(eq$coef[b, ], if (m$k) eq$tau[b, ] else numeric(0), xs, ex)
+    jp_eval(eq$coef_c[b, ], if (m$k) eq$tau[b, ] else numeric(0), xs, ex,
+            eq$ctr)
   }, numeric(length(xs)))
   q <- t(apply(vals, 1L, stats::quantile, c(alpha / 2, 1 - alpha / 2),
                na.rm = TRUE, names = FALSE))
@@ -127,6 +128,58 @@ jp_trend <- function(estimate, p, alpha) {
          names(jp_trend_cols))
 }
 
+# 95% confidence intervals of the observed values: exact Poisson (Garwood)
+# or binomial (Clopper-Pearson) limits when the rates were calculated from
+# counts with Poisson or binomial variation, which stay valid at zero counts;
+# otherwise the value plus or minus 1.96 standard errors.
+jp_obs_ci <- function(object, f) {
+  s <- object$settings
+  d <- f$data
+  lo <- d$r - 1.96 * d$se
+  hi <- d$r + 1.96 * d$se
+  cnt <- d$count
+  pop <- d$population
+  counted <- s$family != "gaussian" || identical(s$variance, "poisson")
+  ok <- counted & is.null(s$comparability_ratio) & is.finite(cnt) & cnt >= 0
+  if (any(ok)) {
+    if (s$type == "crude_rate" && any(is.finite(pop))) {
+      ok <- ok & is.finite(pop) & pop > 0
+      lo[ok] <- s$rate_per * ifelse(cnt[ok] > 0, stats::qgamma(0.025, cnt[ok]),
+                                    0) / pop[ok]
+      hi[ok] <- s$rate_per * stats::qgamma(0.975, cnt[ok] + 1) / pop[ok]
+    } else if (s$type %in% c("proportion", "percent")) {
+      ok <- ok & is.finite(pop) & pop >= cnt & pop > 0
+      mult <- if (s$type == "percent") 100 else 1
+      lo[ok] <- mult * ifelse(cnt[ok] > 0,
+                              stats::qbeta(0.025, cnt[ok], pop[ok] - cnt[ok] + 1),
+                              0)
+      hi[ok] <- mult * ifelse(cnt[ok] < pop[ok],
+                              stats::qbeta(0.975, cnt[ok] + 1, pop[ok] - cnt[ok]),
+                              1)
+    } else if (s$type == "count") {
+      lo[ok] <- ifelse(cnt[ok] > 0, stats::qgamma(0.025, cnt[ok]), 0)
+      hi[ok] <- stats::qgamma(0.975, cnt[ok] + 1)
+    }
+  }
+  list(lo = lo, hi = hi)
+}
+
+# Base 10 log transformation of the y axis that keeps -Inf (an error bar
+# running to the bottom of the panel) as -Inf.
+jp_log10 <- function() {
+  scales::new_transform(
+    "log-10",
+    transform = function(x) {
+      out <- suppressWarnings(log10(x))
+      out[!is.na(x) & x == -Inf] <- -Inf
+      out
+    },
+    inverse = function(x) 10^x,
+    breaks = scales::breaks_log(base = 10),
+    domain = c(1e-100, Inf)
+  )
+}
+
 # Assembles plotting data for the selected cohorts and model.
 jp_plot_data <- function(object, model, cohorts = NULL, digits = 1,
                          band = FALSE) {
@@ -140,9 +193,11 @@ jp_plot_data <- function(object, model, cohorts = NULL, digits = 1,
     m <- jp_pick(f, model)
     a <- m$apc
     mid <- (a$start + a$end) / 2
+    ci <- jp_obs_ci(object, f)
     list(
       points = data.frame(cohort = labs[i], x = f$data$x, y = f$data$r,
-                          se = f$data$se, included = f$data$included,
+                          se = f$data$se, lo = ci$lo, hi = ci$hi,
+                          included = f$data$included,
                           fit = jp_fitted_at(f, m, f$data$x)),
       curve = data.frame(cohort = labs[i], jp_curve(f, m, band)),
       joinpoints = if (m$k) {
@@ -203,9 +258,12 @@ jp_plot_data <- function(object, model, cohorts = NULL, digits = 1,
 #'   empirical quantile resamples, when available.
 #' @param joinpoint_ci Shade the confidence interval of each joinpoint
 #'   location.
-#' @param error_bars Draw 95% confidence intervals of the observed values
-#'   (observed value plus or minus 1.96 standard errors) when standard
-#'   errors are available.
+#' @param error_bars Draw 95% confidence intervals of the observed values:
+#'   exact Poisson or binomial limits for rates, proportions and counts
+#'   calculated from counts with Poisson or binomial variation, otherwise the
+#'   observed value plus or minus 1.96 standard errors (when standard errors
+#'   are available). On a log axis a lower limit at or below zero runs to
+#'   the bottom of the panel.
 #' @param log_y Use a logarithmic y axis.
 #' @param digits Decimals of the segment labels (default 1 for APCs and 3
 #'   for slopes of linear models).
@@ -326,11 +384,14 @@ autoplot.joinpoint <- function(object, model = "final",
       color = NA, alpha = 0.15, show.legend = FALSE
     )
   }
-  if (error_bars && any(!is.na(pts$se))) {
+  if (error_bars && any(!is.na(pts$lo))) {
+    eb <- pts[!is.na(pts$lo), ]
+    # On a log axis a lower limit at or below zero runs to the bottom of the
+    # panel.
+    if (log_y) eb$lo[eb$lo <= 0] <- -Inf
     g <- g + geom("geom_errorbar")(
-      data = pts[!is.na(pts$se), ],
-      ggplot2::aes(ymin = .data$y - 1.96 * .data$se,
-                   ymax = .data$y + 1.96 * .data$se),
+      data = eb,
+      ggplot2::aes(ymin = .data$lo, ymax = .data$hi),
       width = 0, linewidth = 0.4, alpha = 0.7, show.legend = FALSE
     )
   }
@@ -363,11 +424,10 @@ autoplot.joinpoint <- function(object, model = "final",
       # panel's y range. On a log axis an error bar reaching zero or below
       # runs to the bottom of the panel.
       ob <- pts[on, ]
-      se <- if (error_bars) ifelse(is.na(ob$se), 0, ob$se) else 0
       oy <- suppressWarnings(tf(ob$y))
       ok <- is.finite(oy)
-      lo <- suppressWarnings(tf(ob$y - 1.96 * se))
-      hi <- suppressWarnings(tf(ob$y + 1.96 * se))
+      lo <- suppressWarnings(tf(if (error_bars) ifelse(is.na(ob$lo), ob$y, ob$lo) else ob$y))
+      hi <- suppressWarnings(tf(if (error_bars) ifelse(is.na(ob$hi), ob$y, ob$hi) else ob$y))
       lo[!is.finite(lo)] <- -Inf
       hi[!is.finite(hi)] <- oy[!is.finite(hi)]
       # Labels need a finite anchor: on a log axis a segment fitted at or
@@ -415,7 +475,8 @@ autoplot.joinpoint <- function(object, model = "final",
     g <- g + ggplot2::facet_wrap(~cohort, scales = "free_y", ncol = ncol)
   }
   g <- g + if (log_y) {
-    ggplot2::scale_y_log10(expand = ggplot2::expansion(mult = pad))
+    ggplot2::scale_y_continuous(transform = jp_log10(),
+                                expand = ggplot2::expansion(mult = pad))
   } else {
     ggplot2::scale_y_continuous(expand = ggplot2::expansion(mult = pad))
   }
@@ -677,7 +738,7 @@ plot_aapc <- function(object, model = "final", interactive = FALSE) {
     a$data_id <- paste0(a$cohort, "|aapc|", a$range)
     a$tooltip <- paste0(
       "<b>", jp_html(a$cohort), "</b><br>", jp_html(a$range), "<br>",
-      nm$aapc_abbr, " ", jp_fmt(a$estimate), ifelse(a$significant, "*", ""),
+      jp_html(nm$aapc_abbr), " ", jp_fmt(a$estimate), ifelse(a$significant, "*", ""),
       jp_tip_ci(a$lower, a$upper, 1L, object$settings$control$alpha_aapc),
       jp_tip_p(a$p_value), "<br>",
       as.character(a$trend)
@@ -739,7 +800,9 @@ plot_selection <- function(object, interactive = FALSE) {
     if (is.null(t)) stop("No tests were performed.", call. = FALSE)
     what <- if (method == "lrt") "Monte Carlo likelihood ratio" else "permutation"
     t$cohort <- coh(t)
-    t$test <- factor(paste0(t$null, " vs ", t$alternative))
+    # In the order the sequential procedure performed the tests.
+    lab <- paste0(t$null, " vs ", t$alternative)
+    t$test <- factor(lab, levels = unique(lab))
     t$data_id <- paste0(t$cohort, "|test|", t$test)
     t$tooltip <- paste0("<b>", jp_html(t$cohort), "</b><br>", t$null,
                         " vs ", t$alternative, " joinpoints<br>p ",
@@ -824,13 +887,26 @@ plot_residuals <- function(object, type = c("time", "qq", "acf"),
       return(NULL)
     }
     m <- jp_pick(f, model)
-    if (sum(m$wresid^2) <= jp_tiny(jp_whiten_mat(f$S), f$y, f$x, f$extra)) {
+    # As for the Durbin-Watson statistic: least squares residuals against
+    # the rounding error of the responses, Pearson residuals of likelihood
+    # fits (which do not depend on rate_per) against their own scale.
+    tiny <- if (object$settings$family == "gaussian") {
+      jp_tiny(jp_whiten_mat(f$S), f$y, f$x, f$extra, rel = 0)
+    } else {
+      length(f$y) * .Machine$double.eps
+    }
+    if (sum(m$wresid^2) <= tiny) {
       stop("Cohort ", jp_cohort_label(object, g), " is fitted exactly; its ",
            "residuals are numerically zero.", call. = FALSE)
     }
     r <- m$wresid / sqrt(sum(m$wresid^2) /
                            max(1, m$n - 2 * (m$k + 1) - length(m$extra_names)))
-    data.frame(cohort = jp_cohort_label(object, g), x = f$x, resid = r)
+    # Position of each residual in the time sequence, excluded observations
+    # included, so that autocorrelation lags count time steps as in the
+    # fitted covariance.
+    pos <- match(f$x, sort(unique(f$data$x)))
+    data.frame(cohort = jp_cohort_label(object, g), x = f$x, resid = r,
+               pos = pos)
   }))
   d$cohort <- factor(d$cohort, unique(d$cohort))
   facet <- if (nlevels(d$cohort) > 1L) ggplot2::facet_wrap(~cohort)
@@ -849,7 +925,9 @@ plot_residuals <- function(object, type = c("time", "qq", "acf"),
       ggplot2::labs(x = "Normal quantile", y = "Standardized residual"),
     acf = {
       a <- do.call(rbind, lapply(split(d, d$cohort), function(dd) {
-        ac <- stats::acf(dd$resid, plot = FALSE,
+        full <- rep(NA_real_, max(dd$pos))
+        full[dd$pos] <- dd$resid
+        ac <- stats::acf(full, plot = FALSE, na.action = stats::na.pass,
                          lag.max = min(10L, nrow(dd) - 2L))
         data.frame(cohort = dd$cohort[1L], lag = drop(ac$lag)[-1L],
                    acf = drop(ac$acf)[-1L], bound = 1.96 / sqrt(nrow(dd)))
@@ -901,7 +979,7 @@ jp_key_factor <- function(keys) {
   if (!ncol(keys)) {
     return(factor(rep("1", nrow(keys))))
   }
-  codes <- lapply(keys, function(v) as.integer(factor(v)))
+  codes <- unname(lapply(keys, function(v) as.integer(factor(v))))
   id <- do.call(paste, c(codes, sep = "\r"))
   ok <- stats::complete.cases(keys)
   id[!ok] <- NA

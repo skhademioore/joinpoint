@@ -43,6 +43,17 @@ jp_apc_table <- function(model, alpha, ci_method, eq = NULL) {
     } else {
       NA_real_
     }
+    # A slope within the rounding error of its own data (a constant series,
+    # for example) is an exact zero: its estimate and standard error are
+    # rounding error, which carries no evidence of a trend.
+    zero <- abs(b) <= jp_slope_tol(model, model$x, seq_len(k + 1L))
+    if (any(zero)) {
+      out$estimate[zero] <- 0
+      out$lower[zero] <- pmin(out$lower[zero], 0)
+      out$upper[zero] <- pmax(out$upper[zero], 0)
+      out$statistic[zero] <- 0
+      out$p_value[zero] <- ifelse(is.na(out$p_value[zero]), NA_real_, 1)
+    }
   }
   out$significant <- !is.na(out$p_value) & out$p_value < alpha
   out
@@ -95,6 +106,13 @@ jp_aapc_table <- function(model, ranges, alpha, ci_method, eq = NULL) {
       row$statistic <- mu / se
       row$p_value <- p
       row$se_log <- se
+      if (abs(mu) <= jp_slope_tol(model, model$x)) {
+        row$estimate <- 0
+        row$lower <- min(row$lower, 0)
+        row$upper <- max(row$upper, 0)
+        row$statistic <- 0
+        if (!is.na(p)) row$p_value <- 1
+      }
     }
     row$log_estimate <- mu
     row
@@ -153,12 +171,19 @@ jp_tau_crit <- function(model, alpha, form = "lerman") {
   }
   fq <- stats::qf(1 - alpha, k, df)
   if (!is.finite(model$df)) {
-    q + model$mse * stats::qchisq(1 - alpha, k)
-  } else if (form == "literal") {
-    q * (1 + k / df) * fq
-  } else {
-    q * (1 + k * fq / df)
+    return(q + model$mse * stats::qchisq(1 - alpha, k))
   }
+  # An SSE below the rounding error of the responses is an exact fit: the
+  # cutoff is then relative to that rounding error, so that equally exact
+  # placements (an unidentified joinpoint) are all accepted.
+  qe <- max(q, model$sse_floor %||% 0)
+  crit <- if (form == "literal") {
+    qe * (1 + k / df) * fq
+  } else {
+    qe * (1 + k * fq / df)
+  }
+  # The estimate itself always belongs to its interval.
+  max(crit, qe)
 }
 
 # Requested AAPC ranges: full range, last X observations and custom ranges.

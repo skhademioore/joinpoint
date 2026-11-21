@@ -11,9 +11,12 @@
 * Joinpoints are found by an exhaustive grid search with placement
   constraints and optional points between observations (Lerman 1980),
   compiled in C++ and evaluated from cross products, with an exact search
-  from residual vectors when a model fits almost perfectly.
+  from residual vectors when a model fits almost perfectly. Fitted values
+  are evaluated in centered coordinates, so shifted or distant x values keep
+  full precision.
 * Poisson and logistic joinpoint models fitted by exact maximum likelihood
-  (Czajkowski et al. 2008), with Wald intervals, profile deviance joinpoint
+  (Czajkowski et al. 2008), with every candidate compared at convergence,
+  Wald intervals from the QR factorization, profile deviance joinpoint
   intervals, deviance based criteria and optional quasi-likelihood dispersion.
 * Continuous joinpoints between observations by an exact search (Hudson 1966).
 * Covariates (`covariates = ~ ...`), excluded data points, shifted x values,
@@ -46,15 +49,20 @@
 
 ## Output and graphics
 
+* Exact fits are recognized: a constant series has a zero trend with p = 1,
+  an unidentified joinpoint gets the whole admissible interval, and
+  parameters that are not estimable get no standard error.
 * Accessors `apc()`, `aapc()`, `joinpoints()`, `model_selection()`,
   `model_estimates()`, `jump_estimates()`, the publication table `jp_table()`,
   `coef()` and `vcov()` methods with matching parameters, `fitted()`,
   `residuals()`, `predict()` (one prediction per row of `newdata`) and
   `as.data.frame()` methods, and `jp_export()` for delimited text files.
 * `ggplot2` graphics: `autoplot()` trend figures with segment labels placed to
-  avoid each other, the curves, the points and their error bars;
+  avoid each other, the curves, the points and their error bars (exact
+  Poisson or binomial limits for rates calculated from counts);
   `plot_apc()`, `plot_aapc()`, `plot_models()`, `plot_selection()`,
-  `plot_residuals()`, comparison plots, `theme_joinpoint()` and color
+  `plot_residuals()` (autocorrelation lags counted in time steps across
+  excluded observations), comparison plots, `theme_joinpoint()` and color
   scales.
 * Interactive graphics (`jp_interactive()`, or `interactive = TRUE` in the
   plot functions) built with ggiraph: tooltips with the APC, confidence

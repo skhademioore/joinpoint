@@ -14,6 +14,11 @@ jp_bic3 <- function(sse, n, k) log(sse / n) + (3 * k + 2) * log(n) / n
 # the units of y (rescaling y by a shifts it by -(2 / n) ln a per joinpoint)
 # or of x.
 jp_mbic <- function(sse, n, k, Xw) {
+  # The criterion contains log Gamma((n - k - 3) / 2), defined for
+  # n > k + 3 only.
+  if (n - k - 3 <= 0) {
+    return(NA_real_)
+  }
   ld <- determinant(crossprod(Xw), logarithm = TRUE)$modulus
   jp_bic(sse, n, k) + as.numeric(ld) / n -
     (2 / n) * lgamma((n - k - 3) / 2) - ((k + 3) / n) * log(sse)
@@ -60,7 +65,7 @@ jp_criteria <- function(x, y, S, models, method, extra = NULL) {
   ks <- vapply(models, `[[`, numeric(1), "k")
   sse <- vapply(models, `[[`, numeric(1), "sse")
   # Exact fits share the numerical zero, so the penalty decides among them.
-  tol <- jp_tiny(jp_whiten_mat(S), y, x, extra)
+  tol <- jp_tiny(jp_whiten_mat(S), y, x, extra, rel = 0)
   ls <- pmax(sse, tol)
   tab <- data.frame(
     joinpoints = ks, sse = sse,

@@ -10,7 +10,7 @@ vignette: >
 ```{r setup, include = FALSE}
 knitr::opts_chunk$set(collapse = TRUE, comment = "#>", fig.width = 7,
                       fig.height = 4.2, dpi = 150, out.width = "100%")
-ia <- requireNamespace("ggiraph", quietly = TRUE)
+ia <- requireNamespace("ggiraph", quietly = TRUE) && knitr::is_html_output()
 pandoc <- rmarkdown::pandoc_available()
 ```
 
@@ -123,13 +123,17 @@ in the first chunk of the document, it appears instead as the table of
 `jp_table()`, formatted for the output (HTML, LaTeX, Word or Markdown); the
 chunk option `tab.cap` sets its caption:
 
+```{r, include = FALSE}
+old <- options(joinpoint.knit_table = NULL)
+```
+
 ```{r, tab.cap = "Trends in stroke and tuberculosis mortality."}
 options(joinpoint.knit_table = TRUE)
 fit
 ```
 
 ```{r, include = FALSE}
-options(joinpoint.knit_table = NULL)
+options(old)
 ```
 
 Figures are drawn by `autoplot()` and the other plot functions as in any
@@ -137,9 +141,11 @@ chunk.
 
 ## Interactive graphics
 
-Every figure of the package can be drawn as an interactive graphic, with
-`interactive = TRUE` in the plot function and `jp_interactive()`, or
-`jp_interactive()` on the fit directly. The graphic looks like the static
+The trend figure (`autoplot()`), the APC and AAPC figures (`plot_apc()`,
+`plot_aapc()`) and the model selection figure (`plot_selection()`) can be
+drawn as interactive graphics, with `interactive = TRUE` in the plot
+function and `jp_interactive()`, or `jp_interactive()` on the fit
+directly, with `plot` choosing the figure. The graphic looks like the static
 figure. Hovering a segment shows its period, APC, confidence interval and
 p value and highlights the segment with its band and label; hovering an
 observation shows its value, its confidence interval and the fitted trend;
@@ -171,7 +177,8 @@ jp_interactive(g, height = 4.2)
 The graphics are htmlwidgets: they appear in the RStudio viewer, in HTML
 documents made with R Markdown or Quarto, on pkgdown sites and in Shiny
 applications (with `ggiraph::girafeOutput()` and `ggiraph::renderGirafe()`),
-and `jp_save()` writes them to a standalone web page:
+and `jp_save()` writes them to a standalone web page (without Pandoc, the
+page needs the folder of scripts written beside it):
 
 ```{r, eval = ia}
 jp_save(jp_interactive(fit), file.path(dir, "mortality.html"))

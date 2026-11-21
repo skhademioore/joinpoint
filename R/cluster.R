@@ -204,9 +204,15 @@ jp_cluster <- function(data, x, count, population, age, standard, by = NULL,
   }
   rates <- tab("rates")
   fit <- joinpoint(rates, x = "x", y = "rate", se = "se",
-                   by = c(by, "cluster"), kmin = kmin, kmax = kmax,
+                   by = c(by, "cluster"), kmin = kmin,
+                   kmax = if (!is.null(kmax)) {
+                     min(kmax, max(vapply(res, `[[`, numeric(1), "kmax")))
+                   },
                    method = final_method, control = control, ...)
   fit$settings$x <- xn
+  # The rates carry the time variable under its own name, as the fit
+  # expects for predictions.
+  if (!xn %in% names(rates)) names(rates)[names(rates) == "x"] <- xn
   structure(list(
     compression = tab("compression"), selection = tab("selection"),
     clusters = tab("clusters"), madwd = tab("madwd"), rates = rates,
@@ -377,7 +383,7 @@ jp_cluster_one <- function(x, C, P, D, std, ages, min_count, compression,
       min_count = apply(Cc, 2L, min), mean_count = colMeans(Cc),
       max_count = apply(Cc, 2L, max)
     ),
-    selection = sel, madwd = mad, rates = rates,
+    selection = sel, madwd = mad, rates = rates, kmax = kmax,
     clusters = data.frame(
       cluster = rep(cl_lab, lengths(final)),
       age_group = lab[unlist(final)]
@@ -389,7 +395,9 @@ jp_cluster_one <- function(x, C, P, D, std, ages, min_count, compression,
 # stage, under one time budget for all G (G + 1) / 2 blocks together.
 jp_cluster_kmax <- function(kmax, kmin, nt, G, cons, method, ctrl) {
   rec <- jp_recommended_kmax(nt)
-  cnt <- jp_node_counts(cons, max(rec, kmax, kmin))
+  # Counted up to the most joinpoints the candidates could hold.
+  cnt <- jp_node_counts(cons, min(max(rec, kmax, kmin),
+                                  length(cons$first_ok)))
   nodes <- c(1, 1 + cumsum(cnt$nodes))
   feasible <- min(sum(cumprod(cnt$models > 0)), max(0, floor((nt - 3) / 2)))
   blocks <- G * (G + 1) / 2
@@ -408,11 +416,20 @@ jp_cluster_kmax <- function(kmax, kmin, nt, G, cons, method, ctrl) {
         "seconds; set kmax to override."
       ), k0, kmax, blocks, format(signif(ctrl$time_budget, 2))))
     }
-  } else if (kmax <= length(cnt$nodes) && cost(kmax) > ctrl$time_budget) {
-    message(sprintf(paste(
-      "Clustering: searching %d joinpoints in each of %d age group blocks",
-      "is expected to take about %s seconds."
-    ), kmax, blocks, secs(kmax)))
+  } else {
+    # The final fit cannot use more joinpoints than the data allow, so the
+    # blocks of the first stage are not scored with more either.
+    if (kmax > feasible) {
+      warning("Clustering: ", nt, " time points allow at most ", feasible,
+              " joinpoints; `kmax` lowered from ", kmax, ".", call. = FALSE)
+      kmax <- feasible
+    }
+    if (cost(kmax) > ctrl$time_budget) {
+      message(sprintf(paste(
+        "Clustering: searching %d joinpoints in each of %d age group blocks",
+        "is expected to take about %s seconds."
+      ), kmax, blocks, secs(kmax)))
+    }
   }
   if (kmin > kmax) {
     stop("`kmin` exceeds the largest feasible number of joinpoints (", kmax,

@@ -30,14 +30,26 @@ cited authors (Lerman, Czajkowski, et al.).
   are reproducible by default through the documented arguments
   `jp_control(perm_seed = 7160, eq_seed = 10000)`. The functions save the
   global random number state before setting a seed and restore it on exit,
-  so the user's random number stream is not changed; `perm_seed = NULL` or
-  `eq_seed = NULL` uses the current stream instead.
+  so the user's random number stream is not changed (except for the normal
+  deviate cached by the Box-Muller generator, which R does not expose);
+  `perm_seed = NULL` or `eq_seed = NULL` uses the current stream instead.
+  Interactive graphics do not use the random number generator.
 * Run time: examples take at most about one second each. Slow permutation
   tests are skipped on CRAN; the full test suite and the vignettes take
   about two minutes of CPU time in total.
-* Files are written only by `jp_export()`, to a directory the user must
-  supply; the example and the tests write to `tempdir()` and remove what they
-  write.
+* Files are written only by `jp_export()`, `jp_save()` and `jp_report()`,
+  to paths the user supplies; the examples, tests and vignettes write to
+  `tempdir()` and remove what they write. Documents are rendered in a
+  private temporary folder and then copied to the requested path, so no
+  other file is replaced or removed.
+* Rendered reports (`jp_report()`) and document exports use Pandoc through
+  the suggested rmarkdown package, only when it is available; reports are
+  rendered by a separate `Rscript` process (without user or site profiles),
+  so that a report can be made from within a document being knitted. The
+  `\donttest` report example takes about five seconds.
+* Interactive graphics use the suggested packages ggiraph and gdtools when
+  installed; they name system fonts and do not write to the gdtools font
+  cache.
 * References for the methods are given in the Description field with DOIs.
 
 ## Downstream dependencies

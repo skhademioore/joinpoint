@@ -164,3 +164,66 @@ test_that("excluded rows are not validated", {
   expect_true(is.na(f$fits[[1]]$data$r[1]))
   expect_equal(nobs(f), 11)
 })
+
+test_that("count inputs are checked on the included rows", {
+  d <- data.frame(x = 1:8, n = c(0, 3, 5, 8, 10, 3, 4, 5), pop = 100)
+  d$r <- d$n / d$pop
+  given <- joinpoint(d, x, r, count = n, population = pop, type = "crude_rate",
+                     variance = "poisson", rate_per = 1, kmax = 0)
+  made <- joinpoint(d, x, count = n, population = pop, type = "crude_rate",
+                    variance = "poisson", rate_per = 1, kmax = 0)
+  expect_equal(apc(given)$estimate, apc(made)$estimate)
+  d$n[2] <- NA
+  expect_error(joinpoint(d, x, r, count = n, type = "crude_rate",
+                         variance = "poisson", kmax = 0), "count for every")
+  d <- data.frame(x = 1:8, n = c(1, rep(0, 7)), p = 100)
+  expect_error(joinpoint(d, x, count = n, population = p, variance = "poisson",
+                         exclude = 1, kmax = 0), "All counts are zero")
+  d <- data.frame(x = 1:12, y = 4 + sin(1:12), z = c(NA, cos(2:12)))
+  expect_equal(nobs(L(d, covariates = ~ z, exclude = 1, kmax = 0)), 11)
+})
+
+test_that("small or empty inputs give missing values, not errors", {
+  f <- L(data.frame(x = 1:8, y = 1:8 + sin(1:8)), kmax = 0)
+  expect_equal(nrow(predict(f, data.frame(x = numeric()))), 0)
+  expect_true(is.na(model_selection(L(data.frame(x = 1:2, y = c(1, 3)),
+                                      kmax = 0))$criteria$mse))
+  expect_error(L(data.frame(x = 1:3, y = c(1, 3, 2)), kmax = 0,
+                 method = "mbic"), "not defined")
+})
+
+test_that("grouping and result column names do not collide", {
+  f <- L(data.frame(x = 1:8, y = 11:18 + sin(1:8), sep = "a"), by = "sep",
+         kmax = 0)
+  expect_equal(nobs(f), 8)
+  d <- expand.grid(year = 1:3, age = c("a", "b"), rate = 1:2)
+  d$count <- 5
+  d$pop <- 100
+  expect_error(age_adjust(d, year, count, pop, age, c(a = 1, b = 1),
+                          by = "rate"), "rename")
+})
+
+test_that("cluster results predict and respect the feasible joinpoints", {
+  d <- expand.grid(year = 1:6, age = 1:2)
+  d$p <- 100
+  d$n <- 10 + d$age + d$year
+  cl <- jp_cluster(d, year, n, p, age, c("1" = 1, "2" = 1), kmax = 0,
+                   ci_method = "parametric")
+  expect_equal(nrow(predict(cl$fit, cl$rates)), nrow(cl$rates))
+  d <- expand.grid(t = 1:4, a = 1:2)
+  d$n <- c(10, 20, 40, 40) * (d$a + 1)
+  d$p <- 100
+  expect_warning(
+    cl <- jp_cluster(d, t, n, p, a, c("1" = 1, "2" = 1), kmax = 1,
+                     control = jp_control(n_grid = 1), ci_method = "parametric"),
+    "lowered")
+  expect_true(all(cl$selection$joinpoints == 0))
+})
+
+test_that("an export prefix cannot leave the folder", {
+  f <- L(data.frame(x = 1:8, y = 1:8 + sin(1:8)), kmax = 0)
+  dir <- temp_dir()
+  expect_error(jp_export(f, file.path(dir, "out"), prefix = "../p"),
+               "without a folder")
+  expect_length(list.files(dir), 0)
+})

@@ -179,3 +179,61 @@ test_that("estimated autocorrelation respects the gaps of excluded rows", {
   adj <- function(S) S[1, 2] / sqrt(S[1, 1] * S[2, 2])
   expect_lt(abs(adj(S1) - adj(S2)), .05)
 })
+
+test_that("the comparability ratio fit does not depend on the units of se", {
+  x <- 1:12
+  d <- data.frame(x, y = exp(2 + .1 * x + ifelse(x > 6, .3, -.3) +
+                               .05 * sin(x)))
+  d$s <- .01 * d$y
+  d$t <- 10 * d$s
+  fit <- function(s) do.call(joinpoint, list(
+    d, quote(x), quote(y), se = as.name(s), jump = 6, comparability_ratio = 2,
+    cr_variance = .01, method = "bic", kmax = 0, ci_method = "parametric"))
+  expect_equal(apc(fit("t"))$estimate, apc(fit("s"))$estimate)
+  expect_equal(vcov(fit("t")), vcov(fit("s")))
+})
+
+test_that("the parallelism test does not depend on the cohort levels", {
+  cmp <- function(offset) {
+    x <- 1:10
+    d <- rbind(data.frame(x, g = "A", y = x + .01 * sin(x)),
+               data.frame(x, g = "B", y = offset + 1.1 * x + .01 * cos(x)))
+    fit <- joinpoint(d, x, y, by = "g", log = FALSE, kmax = 0,
+                     ci_method = "parametric")
+    jp_compare(fit, n_perm = 199)$p_value
+  }
+  expect_equal(cmp(1e6), cmp(0))
+})
+
+test_that("Monte Carlo tests need usable simulations and a null estimate", {
+  mc <- joinpoint:::jp_mc_pvalue(2, function(n) rep(NA_real_, n), 20)
+  expect_true(is.na(mc[["p"]]))
+  expect_equal(mc[["failed"]], 20)
+  d <- data.frame(x = 1:10, n = rep(c(0, 100), each = 5), pop = 100)
+  expect_warning(expect_warning(
+    f <- joinpoint(d, x, count = n, population = pop, family = "binomial",
+                   method = "lrt", kmax = 1, control = jp_control(n_perm = 19)),
+    "No maximum likelihood"), "not performed")
+  expect_true(is.na(model_selection(f)$tests$p_value))
+})
+
+test_that("joinpoint intervals contain the estimate at any level", {
+  x <- 1:12
+  j <- joinpoints(L(data.frame(x, y = x + 2 * pmax(x - 6.4, 0) + .02 * sin(x)),
+                    kmin = 1, kmax = 1, continuous = TRUE,
+                    control = jp_control(tau_interval = "literal",
+                                         alpha_joinpoint = .5)))
+  expect_true(j$lower <= j$estimate && j$estimate <= j$upper)
+})
+
+test_that("a comparison without common AAPC ranges keeps its test", {
+  x <- 1:14
+  d <- rbind(data.frame(x, g = "A", y = exp(.02 * x + .01 * sin(x))),
+             data.frame(x, g = "B", y = exp(.3 * x - .02 * sin(x))))
+  d <- d[!(d$g == "B" & d$x == 12), ]
+  f <- joinpoint(d, x, y, by = "g", kmax = 0, exclude = 12,
+                 ci_method = "parametric",
+                 control = jp_control(aapc_full = FALSE, aapc_last = 3))
+  cmp <- jp_compare(f, n_perm = 99)
+  expect_true(is.finite(cmp$p_value))
+})

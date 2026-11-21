@@ -1,3 +1,8 @@
+L <- function(d, ...) {
+  joinpoint(d, x, y, log = FALSE, type = "other", ci_method = "parametric",
+            ...)
+}
+
 tb <- subset(us_mortality, cause %in% c("Stroke", "Tuberculosis"))
 fit <- joinpoint(tb, year, rate, by = "cause", kmax = 2,
                  ci_method = "parametric")
@@ -74,7 +79,7 @@ test_that("figures are written as images and LaTeX figures", {
   expect_true("\\label{fig:trend}" %in% tex)
   jp_save(g, file.path(dir, "g.md"), title = "Trends", width = 4, height = 3,
           dpi = 72)
-  expect_equal(readLines(file.path(dir, "g.md")), "![Trends](g.png)")
+  expect_equal(readLines(file.path(dir, "g.md")), "![Trends](<g.png>)")
   expect_error(jp_save(g, file.path(dir, "f.xlsx")), "Figures can be saved")
 })
 
@@ -216,11 +221,15 @@ test_that("titles and file names are written as valid YAML and R", {
     expect_equal(rmarkdown::yaml_front_matter(file.path(dir, "meta.Rmd"))$title,
                  title)
   }
-  path <- file.path(dir, "quoted \"study\".Rmd")
+  # Windows file names cannot hold double quotes.
+  stem <- if (.Platform$OS.type == "windows") "quoted 'study'" else {
+    "quoted \"study\""
+  }
+  path <- file.path(dir, paste0(stem, ".Rmd"))
   jp_report(f, path, plots = character(), interactive = FALSE)
   code <- grep("readRDS", readLines(path), value = TRUE, fixed = TRUE)
   expect_equal(eval(parse(text = sub("fit <- readRDS", "identity", code))),
-               "quoted \"study\"_fit.rds")
+               paste0(stem, "_fit.rds"))
 })
 
 test_that("Markdown reports link their figures by relative paths", {
@@ -244,4 +253,137 @@ test_that("cell contents survive tab separated and LaTeX tables", {
   expect_equal(back$group, tab$group)
   expect_equal(joinpoint:::jp_tex("a\\b {c} ~"),
                "a\\textbackslash{}b \\{c\\} \\textasciitilde{}")
+})
+
+test_that("saving a widget touches nothing but its destination", {
+  skip_if_not_installed("ggiraph")
+  skip_if_not_installed("htmlwidgets")
+  f <- out_fit()
+  dir <- temp_dir()
+  owd <- setwd(dir)
+  on.exit(setwd(owd), add = TRUE)
+  dir.create("out")
+  dir.create("w_files")
+  writeLines("keep", "w_files/note")
+  suppressMessages(jp_save(jp_interactive(f), "out/w.html"))
+  expect_true(file.exists("w_files/note"))
+  expect_true(file.exists("out/w.html"))
+})
+
+test_that("widgets leave the random numbers and the font cache alone", {
+  skip_if_not_installed("ggiraph")
+  f <- out_fit()
+  set.seed(52)
+  s <- .Random.seed
+  old <- getOption("GFONTS_DOWNLOAD_SLEEPTIME")
+  w1 <- jp_interactive(f)
+  w2 <- jp_interactive(f)
+  expect_identical(.Random.seed, s)
+  expect_false(identical(w1$x$uid, w2$x$uid))
+  expect_identical(getOption("GFONTS_DOWNLOAD_SLEEPTIME"), old)
+})
+
+test_that("tooltips escape labels and use exact count intervals", {
+  skip_if_not_installed("ggiraph")
+  d <- data.frame(x = 1:8, n = c(0, 2, 3, 2, 3, 2, 3, 2), p = 10)
+  f <- joinpoint(d, x, count = n, population = p, type = "proportion",
+                 family = "binomial", kmax = 0, interval = "<Month")
+  tips <- unlist(lapply(ggplot2::ggplot_build(autoplot(f, interactive = TRUE))$data,
+                        `[[`, "tooltip"))
+  expect_false(any(grepl("<PC", tips, fixed = TRUE)))
+  first <- grep("Observed 0 ", tips, value = TRUE, fixed = TRUE)[1L]
+  expect_match(first, "95% CI 0, 0.308", fixed = TRUE)
+})
+
+test_that("log axes draw error bars that reach below zero", {
+  d <- data.frame(x = 1:8, y = 1 + (1:8) / 10, se = 2)
+  f <- joinpoint(d, x, y, se = se, kmax = 0, ci_method = "parametric")
+  b <- expect_silent(ggplot2::ggplot_build(autoplot(f, log_y = TRUE,
+                                                    error_bars = TRUE)))
+  eb <- Filter(function(z) "ymin" %in% names(z), b$data)[[1L]]
+  expect_true(all(eb$ymin == -Inf))
+})
+
+test_that("the selection figure keeps the order of the tests", {
+  x <- 1:16
+  f <- L(data.frame(x, y = 1 + x + .01 * sin(x)), kmax = 2,
+         method = "permutation", control = jp_control(n_perm = 19))
+  tab <- model_selection(f)$tests
+  expect_equal(levels(plot_selection(f)$data$test),
+               paste(tab$null, "vs", tab$alternative))
+})
+
+test_that("delimited tables keep numbers and Markdown tables keep cells", {
+  dir <- temp_dir()
+  jp_save(data.frame(p_value = c(.00002, .456789)), file.path(dir, "p.csv"))
+  expect_true(is.numeric(utils::read.csv(file.path(dir, "p.csv"))$p_value))
+  md <- joinpoint:::jp_md_table(data.frame(
+    g = c("first\nsecond", "[A](units)", "A &amp; B", "`x`"), v = 1:4))
+  expect_length(md, 6L)
+  skip_on_cran()
+  skip_if_not(has_pandoc())
+  out <- file.path(dir, "cells.html")
+  jp_save(data.frame(g = c("first\nsecond", "[A](units)", "A &amp; B"),
+                     v = 1:3), out)
+  html <- paste(readLines(out), collapse = "\n")
+  expect_match(html, "[A](units)", fixed = TRUE)
+  expect_match(html, "A &amp;amp; B", fixed = TRUE)
+  expect_equal(lengths(regmatches(html, gregexpr("<tr", html))), 4L)
+})
+
+test_that("figure files with spaces and odd names are handled", {
+  dir <- temp_dir()
+  g <- autoplot(out_fit())
+  jp_save(g, file.path(dir, "trend figure.md"))
+  expect_equal(readLines(file.path(dir, "trend figure.md")),
+               "![](<trend figure.png>)")
+  expect_error(jp_save(g, file.path(dir, "trend}final.tex")), "cannot contain")
+  skip_on_cran()
+  skip_if_not(has_pandoc())
+  before <- list.files(tempdir(), "^figure.*[.]png$")
+  jp_save(g, file.path(dir, "f.docx"))
+  expect_setequal(list.files(tempdir(), "^figure.*[.]png$"), before)
+})
+
+test_that("reports render with long library paths and leave other files", {
+  skip_on_cran()
+  skip_if_not(has_pandoc())
+  f <- out_fit()
+  dir <- temp_dir()
+  extra <- file.path(dir, paste0(strrep("l", 150), 1:4))
+  for (e in extra) dir.create(e)
+  old <- .libPaths()
+  on.exit(.libPaths(old), add = TRUE)
+  .libPaths(c(extra, old))
+  dir.create(file.path(dir, "paper_files"))
+  writeLines("keep", file.path(dir, "paper_files", "keep.txt"))
+  # User startup code is not run by the rendering session.
+  prof <- file.path(dir, "profile.R")
+  writeLines(sprintf("writeLines('ran', %s)",
+                     deparse(file.path(dir, "marker.txt"))), prof)
+  withr_env <- Sys.getenv("R_PROFILE_USER", NA)
+  Sys.setenv(R_PROFILE_USER = prof)
+  on.exit(if (is.na(withr_env)) Sys.unsetenv("R_PROFILE_USER") else
+    Sys.setenv(R_PROFILE_USER = withr_env), add = TRUE)
+  jp_report(f, file.path(dir, "paper.docx"), plots = "trend")
+  expect_true(file.exists(file.path(dir, "paper.docx")))
+  expect_true(file.exists(file.path(dir, "paper_files", "keep.txt")))
+  expect_false(file.exists(file.path(dir, "marker.txt")))
+})
+
+test_that("reports without tests render and state the settings", {
+  d <- data.frame(x = 1:15, y = 2 + (1:15) + .5 * sin(1:15))
+  f <- L(d, exclude = 3, autocorrelation = .5, kmax = 1,
+         method = "permutation", control = jp_control(n_perm = 39))
+  dir <- temp_dir()
+  jp_report(f, file.path(dir, "s.Rmd"), interactive = TRUE)
+  src <- paste(readLines(file.path(dir, "s.Rmd")), collapse = "\n")
+  expect_match(src, "were excluded from the fit", fixed = TRUE)
+  expect_match(src, "first order autocorrelated", fixed = TRUE)
+  expect_match(src, "model_selection(fit)$tests", fixed = TRUE)
+  expect_match(src, "knitr::is_html_output()", fixed = TRUE)
+  f0 <- L(data.frame(x = 1:12, y = 4 + sin(1:12)), kmax = 0,
+          method = "permutation")
+  jp_report(f0, file.path(dir, "t.Rmd"))
+  expect_false(any(grepl("plot_selection", readLines(file.path(dir, "t.Rmd")))))
 })

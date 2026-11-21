@@ -197,7 +197,14 @@ jp_fit_cohort <- function(d, spec, cohort_index = 1L) {
     bic = crit$joinpoints[which.min(crit$bic)],
     bic3 = crit$joinpoints[which.min(crit$bic3)],
     wbic = crit$joinpoints[which.min(crit$wbic)],
-    mbic = crit$joinpoints[which.min(crit$mbic)],
+    mbic = {
+      if (all(is.na(crit$mbic))) {
+        stop("The modified BIC is not defined for ", n, " observations: it ",
+             "needs more than k + 3 observations for k joinpoints. Use ",
+             "another method.", call. = FALSE)
+      }
+      crit$joinpoints[which.min(crit$mbic)]
+    },
     dds = {
       dds <- jp_select_dds(x, y, S, models, crit, ctrl$dds_cutoffs[1L],
                            ctrl$dds_cutoffs[2L], extra)
@@ -239,8 +246,12 @@ jp_fit_cohort <- function(d, spec, cohort_index = 1L) {
   ranges <- jp_aapc_ranges(x_all, d$included, ctrl$aapc_full, ctrl$aapc_last,
                            ctrl$aapc_ranges)
   eq_seed <- jp_cohort_seed(ctrl$eq_seed, cohort_index, ctrl$seed_mode)
+  sse_floor <- if (identical(spec$family %||% "gaussian", "gaussian")) {
+    jp_tiny(jp_whiten_mat(S), y, x, extra, rel = 0)
+  }
   for (i in seq_along(models)) {
     m <- models[[i]]
+    m$sse_floor <- sse_floor
     eq <- NULL
     if (m$k %in% eq_for && jp_resid_df(m) > 0) {
       eq <- jp_with_seed(eq_seed, jp_eq_resample(x, S, m, cand, cons,
@@ -283,7 +294,11 @@ jp_fit_cohort <- function(d, spec, cohort_index = 1L) {
 # centered covariates `Z` (NULL for the trend at their average).
 jp_linear <- function(m, xs, Z = NULL) {
   ex <- if (!is.null(m$jump)) cbind(as.numeric(xs >= m$jump))
-  eta <- jp_eval(m$coef, m$tau, xs, ex)
+  eta <- if (is.null(m$coef_c)) {
+    jp_eval(m$coef, m$tau, xs, ex)
+  } else {
+    jp_eval(m$coef_c, m$tau, xs, ex, m$ctr)
+  }
   if (is.null(Z)) eta else eta + drop(Z %*% m$coef[colnames(Z)])
 }
 

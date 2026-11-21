@@ -15,7 +15,7 @@
 #'
 #' @param object A `joinpoint` or `jp_cluster` object.
 #' @param dir Output directory (created if needed).
-#' @param prefix File name prefix.
+#' @param prefix File name prefix, without a folder.
 #' @param model `"all"` (every fitted model) or `"final"`.
 #' @param comparison Optional result of [jp_compare()] to export with the
 #'   fit.
@@ -39,6 +39,13 @@ jp_export <- function(object, dir, prefix = "joinpoint",
     object <- object$fit
   }
   stopifnot(inherits(object, "joinpoint"))
+  # The files are written to `dir` and named <prefix>.<table>.txt, so the
+  # prefix is one plain file name component (no path).
+  if (!is.character(prefix) || length(prefix) != 1L || is.na(prefix) ||
+      !nzchar(prefix) || grepl("[/\\\\:]", prefix) ||
+      prefix %in% c(".", "..")) {
+    stop("`prefix` must be a file name without a folder.", call. = FALSE)
+  }
   dir.create(dir, showWarnings = FALSE, recursive = TRUE)
   ms <- model_selection(object)
   s <- object$settings

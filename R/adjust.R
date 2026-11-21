@@ -45,6 +45,12 @@ age_adjust <- function(data, x, count, population, age, standard, by = NULL,
   pop <- data[[pn]]
   dl <- if (is.null(dn)) rep(1, nrow(data)) else data[[dn]]
   jp_check_age_data(data, xn, an, by, cnt, pop, std, dl, rate_per)
+  clash <- intersect(c(by, xn), c("rate", "se", "count", "population"))
+  if (length(clash)) {
+    stop("The result has the columns rate, se, count and population; ",
+         "rename the grouping or time column ", toString(clash), ".",
+         call. = FALSE)
+  }
   # A bare column name of `data` is not evaluated outside it.
   in_data <- is.name(std_expr) && as.character(std_expr) %in% names(data)
   if (!in_data && is.numeric(standard) && !is.null(names(standard))) {

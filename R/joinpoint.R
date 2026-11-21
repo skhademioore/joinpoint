@@ -26,10 +26,16 @@
 #'   with the Box-Muller normal generator, a normal deviate R keeps outside
 #'   `.Random.seed` is not restored).
 #' @param n_resample Number of resampled data sets for the empirical quantile
-#'   confidence intervals (default 5001).
+#'   confidence intervals (default 5001). The empirical p value is twice the
+#'   fraction of resampled estimates on the other side of zero, at least
+#'   `1 / n_resample` (its resolution); the interval uses interpolated
+#'   quantiles, so with few resamples the two can disagree near the
+#'   significance level. The significance flags follow the p values.
 #' @param eq_seed Random number seed for the empirical quantile method
 #'   (`NULL` for the current random number stream). The global random number
-#'   state is saved before the seed is set and restored afterwards.
+#'   state is saved before the seed is set and restored afterwards (except
+#'   for the normal deviate cached by the Box-Muller generator; see
+#'   [RNGkind()]).
 #' @param eq_final_only Use the empirical quantile method only for the final
 #'   selected model; other models get parametric intervals.
 #' @param seed_mode `"constant"` uses the same seed for every cohort;
@@ -488,7 +494,11 @@ joinpoint <- function(data, x, y = NULL, by = NULL, se = NULL, count = NULL,
                                  na.action = stats::na.pass)
         Z0 <- stats::model.matrix(stats::terms(mf), mf)
         Z <- Z0[d$row, colnames(Z0) != "(Intercept)", drop = FALSE]
-        if (anyNA(Z)) stop("Missing covariate values.", call. = FALSE)
+        # Excluded rows are only shown, so their covariates may be missing
+        # (their predictions are then missing).
+        if (anyNA(Z[d$included, , drop = FALSE])) {
+          stop("Missing covariate values.", call. = FALSE)
+        }
         # Coefficients are looked up by name, so covariates must not take
         # the names of the model's own coefficients.
         clash <- colnames(Z) %in% c("intercept", "slope", "jump") |
